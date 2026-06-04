@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polaris Pacific Market Dashboards</title>
+
+<!--
+  ============================================================
+  EDIT THIS LIST ONLY.
+  - "file"  = the exact filename of each dashboard in this repo
+  - "label" = the name shown in the dropdown
+  Add or remove lines to match your dashboards. Order = dropdown order.
+  ============================================================
+-->
+<script>
+  const SITE_TITLE = "Polaris Pacific Market Dashboards";
+  const DASHBOARDS = [
+    // Bay Area
+    { file: "sf-condo-market-dashboards-live.html",              label: "San Francisco" },
+    { file: "sf-district-9-attached-market-dashboards-live.html", label: "San Francisco (District 9)" },
+    { file: "oe-attached-market-dashboards-live.html",           label: "Oakland / East Bay" },
+    { file: "sv-attached-market-dashboards-live.html",           label: "Silicon Valley" },
+    { file: "sj-attached-market-dashboards-live.html",           label: "San Jose" },
+    // Southern California
+    { file: "la-attached-market-dashboards-live.html",           label: "Los Angeles" },
+    { file: "downtown-la-attached-market-dashboards-live.html",  label: "Downtown LA" },
+    { file: "oc-attached-market-dashboards-live.html",           label: "Orange County" },
+    { file: "oc-district-4-attached-market-dashboards-live.html", label: "Orange County (District 4)" },
+    { file: "sd-attached-market-dashboards-live.html",           label: "San Diego" },
+    // Pacific Northwest
+    { file: "se-condo-market-dashboards-live.html",              label: "Seattle" },
+    { file: "downtown-seattle-attached-market-dashboards-live.html", label: "Downtown Seattle" },
+    { file: "be-attached-market-dashboards-live.html",           label: "Bellevue" },
+    // Southwest
+    { file: "px-attached-market-dashboards-live.html",           label: "Phoenix" },
+    // Mountain
+    { file: "de-attached-market-dashboards-live.html",           label: "Denver" }
+  ];
+</script>
+
+<!-- Brand typography uses the web-safe Helvetica Neue / Arial stack; no web font needed. -->
+
+<style>
+  :root {
+    --bg: #ffffff;
+    --bar: #ffffff;
+    --ink: #000000;
+    --muted: #666666;
+    --accent: #ee2127;
+    --hover: #f5f5f5;
+    --border: #e2e2e2;
+    --font-headline: "Arial Black", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --font-body: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --bar-h: 60px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: var(--font-body);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .bar {
+    height: var(--bar-h);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 22px;
+    background: var(--bar);
+    border-top: 3px solid var(--accent);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    z-index: 2;
+  }
+
+  .wordmark {
+    font-family: var(--font-headline);
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    color: var(--ink);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+  }
+  .wordmark::before {
+    content: "";
+    width: 5px; height: 20px;
+    background: var(--accent);
+    display: inline-block;
+  }
+
+  .picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .nav-btn {
+    width: 34px; height: 34px;
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink);
+    transition: background .12s ease, border-color .12s ease;
+    font-size: 16px;
+    line-height: 1;
+  }
+  .nav-btn:hover { background: var(--bg); border-color: #cfcabf; }
+  .nav-btn:disabled { opacity: .35; cursor: default; }
+
+  .select-wrap { position: relative; }
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 36px 9px 13px;
+    min-width: 230px;
+    cursor: pointer;
+    outline: none;
+  }
+  select:focus { border-color: var(--accent); }
+  .select-wrap::after {
+    content: "";
+    position: absolute;
+    right: 13px; top: 50%;
+    width: 7px; height: 7px;
+    border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted);
+    transform: translateY(-65%) rotate(45deg);
+    pointer-events: none;
+  }
+
+  .count {
+    font-size: 12px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    min-width: 42px;
+    text-align: right;
+  }
+
+  .stage { position: relative; height: calc(100vh - var(--bar-h)); }
+  iframe {
+    width: 100%; height: 100%;
+    border: 0;
+    background: #fff;
+    display: block;
+  }
+
+  .empty {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+    padding: 24px;
+  }
+
+  @media (max-width: 560px) {
+    .wordmark span { display: none; }
+    select { min-width: 150px; }
+  }
+</style>
+</head>
+<body>
+  <header class="bar">
+    <div class="wordmark"><span id="title"></span></div>
+    <div class="picker">
+      <button class="nav-btn" id="prev" aria-label="Previous dashboard">&#8249;</button>
+      <div class="select-wrap">
+        <select id="select" aria-label="Choose dashboard"></select>
+      </div>
+      <button class="nav-btn" id="next" aria-label="Next dashboard">&#8250;</button>
+      <span class="count" id="count"></span>
+    </div>
+  </header>
+
+  <div class="stage">
+    <iframe id="frame" title="Dashboard"></iframe>
+    <div class="empty" id="empty" style="display:none;">No dashboards configured. Edit the DASHBOARDS list in this file.</div>
+  </div>
+
+<script>
+  (function () {
+    const select = document.getElementById("select");
+    const frame  = document.getElementById("frame");
+    const prev   = document.getElementById("prev");
+    const next   = document.getElementById("next");
+    const count  = document.getElementById("count");
+    document.getElementById("title").textContent = SITE_TITLE;
+    document.title = SITE_TITLE;
+
+    if (!DASHBOARDS.length) {
+      document.querySelector(".picker").style.display = "none";
+      frame.style.display = "none";
+      document.getElementById("empty").style.display = "flex";
+      return;
+    }
+
+    DASHBOARDS.forEach((d, i) => {
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = d.label;
+      select.appendChild(opt);
+    });
+
+    function show(i) {
+      i = Math.max(0, Math.min(DASHBOARDS.length - 1, i));
+      select.value = i;
+      frame.src = DASHBOARDS[i].file;
+      count.textContent = (i + 1) + " / " + DASHBOARDS.length;
+      prev.disabled = i === 0;
+      next.disabled = i === DASHBOARDS.length - 1;
+      // keep the URL bookmarkable: #2 opens the 2nd dashboard
+      history.replaceState(null, "", "#" + (i + 1));
+    }
+
+    function fromHash() {
+      const n = parseInt((location.hash || "").replace("#", ""), 10);
+      return (!isNaN(n) && n >= 1 && n <= DASHBOARDS.length) ? n - 1 : 0;
+    }
+
+    select.addEventListener("change", () => show(parseInt(select.value, 10)));
+    prev.addEventListener("click", () => show(parseInt(select.value, 10) - 1));
+    next.addEventListener("click", () => show(parseInt(select.value, 10) + 1));
+    document.addEventListener("keydown", (e) => {
+      if (e.target.tagName === "SELECT") return;
+      if (e.key === "ArrowLeft")  show(parseInt(select.value, 10) - 1);
+      if (e.key === "ArrowRight") show(parseInt(select.value, 10) + 1);
+    });
+
+    show(fromHash());
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,1300 @@
+<!doctype html><script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Sf District 9 Attached Market Dashboards Live",
+  "schemaVersion": 1,
+  "description": "Live Polaris Pacific market dashboard for SF District 9 attached sales (condos + townhomes + co-ops). Eight cards: weekly sales, weekly $ volume, monthly $ volume, median price 10Y, sale-to-list spread 10Y, prior-month $100K bucket distribution, price per sq ft 10Y, and average days on market 10Y. Filtered to MLS_Source='SF' AND FK_Geo_District_Name='SF District 9' AND PropertyType IN ('CNDO','TWNH','COOP'). Reads via Zapier SQL Server custom query each load.",
+  "mcpTools": [
+    "mcp__a06e351d-2f71-4dcc-9620-4dca8171a250__execute_zapier_read_action"
+  ],
+  "mcpServerNames": [
+    "Zapier"
+  ]
+}
+</script>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>San Francisco District 9 Attached Sales (Live) — Polaris Pacific</title>
+<style>
+  :root {
+    color-scheme: light;
+    --pp-red: #EE2127;
+    --pp-black: #000000;
+    --pp-white: #FFFFFF;
+    --pp-light-gray: #F5F5F5;
+    --pp-warm-gray: #FDF1EB;
+    --pp-text: #111111;
+    --pp-muted: #6B6B6B;
+    --pp-grid: #E5E5E5;
+    --font-headline: 'Arial Black', 'Helvetica Neue', Impact, sans-serif;
+    --font-body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--pp-white); color: var(--pp-text);
+    font-family: var(--font-body); font-size: 14px; line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { max-width: 1280px; margin: 0 auto; padding: 28px 28px 48px; }
+  .brandbar {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+    padding-bottom: 14px; border-bottom: 3px solid var(--pp-red); margin-bottom: 22px;
+  }
+  .brandbar .mark { display: flex; flex-direction: column; gap: 2px; }
+  .brandbar .logotype {
+    font-family: var(--font-headline); font-weight: 900;
+    letter-spacing: -0.01em; text-transform: uppercase;
+    font-size: 22px; line-height: 1; color: var(--pp-red);
+  }
+  .brandbar .logotype .sep { color: var(--pp-black); margin: 0 8px; }
+  .brandbar .logotype .city { color: var(--pp-black); }
+  .brandbar .tag {
+    font-size: 11px; color: var(--pp-muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .brandbar .meta {
+    text-align: right; font-size: 11px; color: var(--pp-muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .brandbar .meta .live {
+    display: inline-flex; align-items: center; gap: 5px;
+    color: var(--pp-red); font-weight: 700;
+  }
+  .brandbar .meta .live::before {
+    content: ''; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--pp-red); display: inline-block;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  h1.page-title {
+    font-family: var(--font-headline); font-weight: 900;
+    font-size: 28px; line-height: 1.1; letter-spacing: -0.02em;
+    text-transform: uppercase; margin: 0 0 4px; color: var(--pp-black);
+  }
+  .page-sub { font-size: 13px; color: var(--pp-muted); margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--pp-white); border: 1px solid var(--pp-grid);
+    padding: 18px 20px 16px;
+    display: flex; flex-direction: column; min-height: 380px;
+    position: relative;
+  }
+  .card.wide { grid-column: 1 / -1; }
+  .card .eyebrow {
+    font-family: var(--font-headline); font-size: 10px;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--pp-red); margin-bottom: 6px;
+  }
+  .card h2 {
+    font-family: var(--font-headline); font-weight: 900;
+    font-size: 17px; line-height: 1.2; letter-spacing: -0.01em;
+    margin: 0 0 4px; color: var(--pp-black);
+  }
+  .card .subtitle { font-size: 12px; color: var(--pp-muted); margin-bottom: 12px; }
+  .kpi-row { display: flex; gap: 22px; margin-bottom: 10px; flex-wrap: wrap; }
+  .kpi { display: flex; flex-direction: column; }
+  .kpi .label {
+    font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--pp-muted); margin-bottom: 2px;
+  }
+  .kpi .value {
+    font-family: var(--font-headline); font-weight: 900;
+    font-size: 22px; line-height: 1; color: var(--pp-black); letter-spacing: -0.01em;
+  }
+  .kpi .value.accent { color: var(--pp-red); }
+  .kpi .delta { font-size: 11px; margin-top: 3px; color: var(--pp-muted); }
+  .kpi .delta.up { color: #0F7A2E; }
+  .kpi .delta.down { color: var(--pp-red); }
+  .chart-wrap { position: relative; flex: 1; min-height: 240px; }
+  .chart-wrap canvas { width: 100% !important; height: 100% !important; }
+  .controls { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .pill {
+    font-family: var(--font-body); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 4px 10px; border: 1px solid var(--pp-grid);
+    background: var(--pp-white); color: var(--pp-muted);
+    cursor: pointer; border-radius: 0;
+  }
+  .pill:hover { border-color: var(--pp-black); color: var(--pp-black); }
+  .pill.active { background: var(--pp-black); color: var(--pp-white); border-color: var(--pp-black); }
+  .footer-note { font-size: 10px; color: var(--pp-muted); margin-top: 8px; }
+
+  .skeleton .skel-line {
+    background: linear-gradient(90deg, #F0F0F0 0%, #E0E0E0 50%, #F0F0F0 100%);
+    background-size: 200% 100%; animation: shimmer 1.4s linear infinite;
+    height: 10px; border-radius: 0;
+  }
+  .skeleton .skel-line.tall { height: 22px; }
+  .skeleton .skel-row { display: flex; gap: 18px; margin-bottom: 10px; }
+  .skeleton .skel-row .skel-line { flex: 1; }
+  .skeleton .skel-chart {
+    flex: 1; min-height: 240px; margin-top: 6px;
+    background: linear-gradient(90deg, #F7F7F7 0%, #ECECEC 50%, #F7F7F7 100%);
+    background-size: 200% 100%; animation: shimmer 1.4s linear infinite;
+  }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  .error {
+    color: var(--pp-red); font-size: 12px; margin-top: 8px;
+    border-left: 3px solid var(--pp-red); padding: 6px 10px; background: var(--pp-warm-gray);
+    word-break: break-word;
+  }
+  .empty {
+    color: var(--pp-muted); font-size: 12px; padding: 24px 0;
+    text-align: center; font-style: italic;
+  }
+
+  @media print {
+    @page { size: landscape; margin: 0.4in; }
+    html, body { background: var(--pp-white); }
+    .app { max-width: none; padding: 12px 12px 16px; }
+    .grid { gap: 10px; }
+    .card {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      min-height: 0;
+      border: 1px solid var(--pp-grid);
+    }
+    .chart-wrap { min-height: 180px; }
+    .controls { display: none !important; }
+    .brandbar .meta .live { display: none; }
+    .skeleton .skel-line, .skeleton .skel-chart { animation: none; }
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="brandbar">
+    <div class="mark">
+      <div class="logotype">POLARIS PACIFIC<span class="sep">/</span><span class="city">SAN FRANCISCO &mdash; DISTRICT 9</span></div>
+      <div class="tag">Market Intelligence &middot; Attached Sales (Condos &amp; Townhomes)</div>
+    </div>
+    <div class="meta">
+      <div class="live" id="live-indicator">Snapshot &middot; data as of 2026-06-04</div>
+      <div id="meta-updated">Loading&hellip;</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <section class="card" id="card-contracts">
+      <div class="eyebrow">WEEKLY SALES</div>
+      <h2 data-title>Number of Sales by Week</h2>
+      <div class="subtitle">Distinct SF District 9 attached listings going contingent / pending</div>
+      <div data-body class="skeleton">
+        <div class="skel-row"><div class="skel-line tall"></div><div class="skel-line tall"></div><div class="skel-line tall"></div></div>
+        <div class="skel-chart"></div>
+      </div>
+      <div class="footer-note">Source: MLS; Polaris Pacific</div>
+    </section>
+
+    <section class="card" id="card-weekly-volume">
+      <div class="eyebrow">WEEKLY VOLUME</div>
+      <h2 data-title>Weekly Closed Transaction Value</h2>
+      <div class="subtitle">Sum of closed sale price &middot; SF District 9 attached</div>
+      <div data-body class="skeleton">
+        <div class="skel-row"><div class="skel-line tall"></div><div class="skel-line tall"></div><div class="skel-line tall"></div></div>
+        <div class="skel-chart"></div>
+      </div>
+      <div class="footer-note">Source: MLS; Polaris Pacific</div>
+    </section>
+
+    <section class="card" id="card-monthly-volume">
+      <div class="eyebrow">MONTHLY VOLUME</div>
+      <h2 data-title>Monthly Closed Transaction Value</h2>
+      <div class="subtitle">Sum of closed sale price (bars) &middot; transaction count (line)</div>
+      <div data-body class="skeleton">
+        <div class="skel-row"><div class="skel-line tall"></div><div class="skel-line tall"></div><div class="skel-line tall"></div></div>
+        <div class="skel-chart"></div>
+      </div>
+      <div class="footer-note">Source: MLS; Polaris Pacific</div>
+    </section>
+
+    <section class="card" id="card-median">
+      <div class="eyebrow">MEDIAN PRICE</div>
+      <h2 data-title>Median Sale Price &mdash; Trailing 10 Years</h2>
+      <div class="subtitle">Monthly median closed sale price &middot; SF District 9 attached</div>
+      <div data-body class="skeleton">
+        <div class="skel-row"><div class="skel-line tall"></div><div class="skel-line tall"></div><div class="skel-line tall"></div></div>
+        <div class="skel-chart"></div>
+      </div>
+      <div class="footer-note">Source: MLS; Polaris Pacific</div>
+    </section>
+
+    <section class="card" id="card-spread">
+      <div class="eyebrow">SALE-TO-LIST SPREAD</div>
+      <h2 data-title>Average Sale-to-List Spread &mdash; Trailing 10 Years</h2>
+      <div class="subtitle">Monthly mean sale-to-list spread</div>
+      <div data-body class="skeleton">
+        <div class="skel-row"><div class="skel-line tall"></div><div class="skel-line tall"></div><div class="skel-line tall"></div></div>
+        <div class="skel-chart"></div>
+      </div>
+      <div class="footer-note">Source: MLS; Polaris Pacific</div>
+    </section>
+
+    <section class="card" id="card-buckets">
+      <div class="eyebrow">PRICE DISTRIBUTION</div>
+      <h2 data-title>Closed Sales by $100K Price Bucket &mdash; Prior Month</h2>
+      <div class="subtitle" data-subtitle>SF District 9 attached &middot; previous calendar month</div>
+      <div data-body class="skeleton">
+        <div class="skel-row"><div class="skel-line tall"></div><div class="skel-line tall"></div><div class="skel-line tall"></div></div>
+        <div class="skel-chart"></div>
+      </div>
+      <div class="footer-note">Source: MLS; Polaris Pacific</div>
+    </section>
+
+    <section class="card" id="card-ppsf">
+      <div class="eyebrow">PRICE PER SQ FT</div>
+      <h2 data-title>Median Price per Sq Ft &mdash; Trailing 10 Years</h2>
+      <div class="subtitle">Monthly median of SalePrice / LivingArea &middot; SF District 9 attached</div>
+      <div data-body class="skeleton">
+        <div class="skel-row"><div class="skel-line tall"></div><div class="skel-line tall"></div><div class="skel-line tall"></div></div>
+        <div class="skel-chart"></div>
+      </div>
+      <div class="footer-note">Source: MLS; Polaris Pacific</div>
+    </section>
+
+    <section class="card" id="card-dom">
+      <div class="eyebrow">DAYS ON MARKET</div>
+      <h2 data-title>Average Days on Market &mdash; Trailing 10 Years</h2>
+      <div class="subtitle">Monthly mean DaysOnMarket at sale &middot; SF District 9 attached</div>
+      <div data-body class="skeleton">
+        <div class="skel-row"><div class="skel-line tall"></div><div class="skel-line tall"></div><div class="skel-line tall"></div></div>
+        <div class="skel-chart"></div>
+      </div>
+      <div class="footer-note">Source: MLS; Polaris Pacific</div>
+    </section>
+  </div>
+</div>
+
+<script id="cowork-frozen-shim">(function(){var FROZEN={"\n      SELECT DATEADD(week, DATEDIFF(week, 0, COALESCE(ContingentDate, PendingDate)), 0) AS week_start,\n             COUNT(DISTINCT ListingMLS_ID) AS contract_count\n      FROM   Tbl_Listings_MLS\n      WHERE  MLS_Source = 'SF'\n        AND  FK_Geo_District_Name = 'SF District 9'\n        AND  PropertyType IN ('CNDO','TWNH','COOP')\n        AND  COALESCE(ContingentDate, PendingDate) IS NOT NULL\n        AND  COALESCE(ContingentDate, PendingDate) >= '2020-01-01'\n        AND  DATEADD(week, DATEDIFF(week, 0, COALESCE(ContingentDate, PendingDate)), 0) < DATEADD(week, DATEDIFF(week, 0, GETDATE()), 0)\n      GROUP  BY DATEADD(week, DATEDIFF(week, 0, COALESCE(ContingentDate, PendingDate)), 0)\n      ORDER  BY week_start":{"results":[{"contract_count":1,"week_start":"2019-12-30T00:00:00"},{"contract_count":5,"week_start":"2020-01-06T00:00:00"},{"contract_count":10,"week_start":"2020-01-13T00:00:00"},{"contract_count":13,"week_start":"2020-01-20T00:00:00"},{"contract_count":21,"week_start":"2020-01-27T00:00:00"},{"contract_count":19,"week_start":"2020-02-03T00:00:00"},{"contract_count":25,"week_start":"2020-02-10T00:00:00"},{"contract_count":27,"week_start":"2020-02-17T00:00:00"},{"contract_count":33,"week_start":"2020-02-24T00:00:00"},{"contract_count":27,"week_start":"2020-03-02T00:00:00"},{"contract_count":15,"week_start":"2020-03-09T00:00:00"},{"contract_count":14,"week_start":"2020-03-16T00:00:00"},{"contract_count":10,"week_start":"2020-03-23T00:00:00"},{"contract_count":7,"week_start":"2020-03-30T00:00:00"},{"contract_count":6,"week_start":"2020-04-06T00:00:00"},{"contract_count":8,"week_start":"2020-04-13T00:00:00"},{"contract_count":13,"week_start":"2020-04-20T00:00:00"},{"contract_count":10,"week_start":"2020-04-27T00:00:00"},{"contract_count":5,"week_start":"2020-05-04T00:00:00"},{"contract_count":14,"week_start":"2020-05-11T00:00:00"},{"contract_count":20,"week_start":"2020-05-18T00:00:00"},{"contract_count":16,"week_start":"2020-05-25T00:00:00"},{"contract_count":10,"week_start":"2020-06-01T00:00:00"},{"contract_count":21,"week_start":"2020-06-08T00:00:00"},{"contract_count":27,"week_start":"2020-06-15T00:00:00"},{"contract_count":25,"week_start":"2020-06-22T00:00:00"},{"contract_count":21,"week_start":"2020-06-29T00:00:00"},{"contract_count":16,"week_start":"2020-07-06T00:00:00"},{"contract_count":18,"week_start":"2020-07-13T00:00:00"},{"contract_count":21,"week_start":"2020-07-20T00:00:00"},{"contract_count":17,"week_start":"2020-07-27T00:00:00"},{"contract_count":18,"week_start":"2020-08-03T00:00:00"},{"contract_count":26,"week_start":"2020-08-10T00:00:00"},{"contract_count":26,"week_start":"2020-08-17T00:00:00"},{"contract_count":26,"week_start":"2020-08-24T00:00:00"},{"contract_count":18,"week_start":"2020-08-31T00:00:00"},{"contract_count":17,"week_start":"2020-09-07T00:00:00"},{"contract_count":26,"week_start":"2020-09-14T00:00:00"},{"contract_count":16,"week_start":"2020-09-21T00:00:00"},{"contract_count":28,"week_start":"2020-09-28T00:00:00"},{"contract_count":26,"week_start":"2020-10-05T00:00:00"},{"contract_count":17,"week_start":"2020-10-12T00:00:00"},{"contract_count":28,"week_start":"2020-10-19T00:00:00"},{"contract_count":27,"week_start":"2020-10-26T00:00:00"},{"contract_count":28,"week_start":"2020-11-02T00:00:00"},{"contract_count":18,"week_start":"2020-11-09T00:00:00"},{"contract_count":27,"week_start":"2020-11-16T00:00:00"},{"contract_count":27,"week_start":"2020-11-23T00:00:00"},{"contract_count":35,"week_start":"2020-11-30T00:00:00"},{"contract_count":24,"week_start":"2020-12-07T00:00:00"},{"contract_count":33,"week_start":"2020-12-14T00:00:00"},{"contract_count":20,"week_start":"2020-12-21T00:00:00"},{"contract_count":16,"week_start":"2020-12-28T00:00:00"},{"contract_count":18,"week_start":"2021-01-04T00:00:00"},{"contract_count":23,"week_start":"2021-01-11T00:00:00"},{"contract_count":18,"week_start":"2021-01-18T00:00:00"},{"contract_count":28,"week_start":"2021-01-25T00:00:00"},{"contract_count":35,"week_start":"2021-02-01T00:00:00"},{"contract_count":36,"week_start":"2021-02-08T00:00:00"},{"contract_count":42,"week_start":"2021-02-15T00:00:00"},{"contract_count":48,"week_start":"2021-02-22T00:00:00"},{"contract_count":36,"week_start":"2021-03-01T00:00:00"},{"contract_count":39,"week_start":"2021-03-08T00:00:00"},{"contract_count":35,"week_start":"2021-03-15T00:00:00"},{"contract_count":29,"week_start":"2021-03-22T00:00:00"},{"contract_count":32,"week_start":"2021-03-29T00:00:00"},{"contract_count":30,"week_start":"2021-04-05T00:00:00"},{"contract_count":30,"week_start":"2021-04-12T00:00:00"},{"contract_count":24,"week_start":"2021-04-19T00:00:00"},{"contract_count":41,"week_start":"2021-04-26T00:00:00"},{"contract_count":40,"week_start":"2021-05-03T00:00:00"},{"contract_count":40,"week_start":"2021-05-10T00:00:00"},{"contract_count":48,"week_start":"2021-05-17T00:00:00"},{"contract_count":42,"week_start":"2021-05-24T00:00:00"},{"contract_count":26,"week_start":"2021-05-31T00:00:00"},{"contract_count":28,"week_start":"2021-06-07T00:00:00"},{"contract_count":25,"week_start":"2021-06-14T00:00:00"},{"contract_count":33,"week_start":"2021-06-21T00:00:00"},{"contract_count":23,"week_start":"2021-06-28T00:00:00"},{"contract_count":26,"week_start":"2021-07-05T00:00:00"},{"contract_count":31,"week_start":"2021-07-12T00:00:00"},{"contract_count":33,"week_start":"2021-07-19T00:00:00"},{"contract_count":26,"week_start":"2021-07-26T00:00:00"},{"contract_count":27,"week_start":"2021-08-02T00:00:00"},{"contract_count":23,"week_start":"2021-08-09T00:00:00"},{"contract_count":23,"week_start":"2021-08-16T00:00:00"},{"contract_count":22,"week_start":"2021-08-23T00:00:00"},{"contract_count":25,"week_start":"2021-08-30T00:00:00"},{"contract_count":17,"week_start":"2021-09-06T00:00:00"},{"contract_count":26,"week_start":"2021-09-13T00:00:00"},{"contract_count":41,"week_start":"2021-09-20T00:00:00"},{"contract_count":23,"week_start":"2021-09-27T00:00:00"},{"contract_count":29,"week_start":"2021-10-04T00:00:00"},{"contract_count":33,"week_start":"2021-10-11T00:00:00"},{"contract_count":29,"week_start":"2021-10-18T00:00:00"},{"contract_count":22,"week_start":"2021-10-25T00:00:00"},{"contract_count":44,"week_start":"2021-11-01T00:00:00"},{"contract_count":24,"week_start":"2021-11-08T00:00:00"},{"contract_count":24,"week_start":"2021-11-15T00:00:00"},{"contract_count":15,"week_start":"2021-11-22T00:00:00"},{"contract_count":20,"week_start":"2021-11-29T00:00:00"},{"contract_count":20,"week_start":"2021-12-06T00:00:00"},{"contract_count":13,"week_start":"2021-12-13T00:00:00"},{"contract_count":18,"week_start":"2021-12-20T00:00:00"},{"contract_count":7,"week_start":"2021-12-27T00:00:00"},{"contract_count":16,"week_start":"2022-01-03T00:00:00"},{"contract_count":22,"week_start":"2022-01-10T00:00:00"},{"contract_count":18,"week_start":"2022-01-17T00:00:00"},{"contract_count":30,"week_start":"2022-01-24T00:00:00"},{"contract_count":24,"week_start":"2022-01-31T00:00:00"},{"contract_count":24,"week_start":"2022-02-07T00:00:00"},{"contract_count":37,"week_start":"2022-02-14T00:00:00"},{"contract_count":29,"week_start":"2022-02-21T00:00:00"},{"contract_count":34,"week_start":"2022-02-28T00:00:00"},{"contract_count":30,"week_start":"2022-03-07T00:00:00"},{"contract_count":30,"week_start":"2022-03-14T00:00:00"},{"contract_count":29,"week_start":"2022-03-21T00:00:00"},{"contract_count":23,"week_start":"2022-03-28T00:00:00"},{"contract_count":38,"week_start":"2022-04-04T00:00:00"},{"contract_count":34,"week_start":"2022-04-11T00:00:00"},{"contract_count":23,"week_start":"2022-04-18T00:00:00"},{"contract_count":29,"week_start":"2022-04-25T00:00:00"},{"contract_count":23,"week_start":"2022-05-02T00:00:00"},{"contract_count":15,"week_start":"2022-05-09T00:00:00"},{"contract_count":13,"week_start":"2022-05-16T00:00:00"},{"contract_count":26,"week_start":"2022-05-23T00:00:00"},{"contract_count":24,"week_start":"2022-05-30T00:00:00"},{"contract_count":21,"week_start":"2022-06-06T00:00:00"},{"contract_count":29,"week_start":"2022-06-13T00:00:00"},{"contract_count":9,"week_start":"2022-06-20T00:00:00"},{"contract_count":16,"week_start":"2022-06-27T00:00:00"},{"contract_count":8,"week_start":"2022-07-04T00:00:00"},{"contract_count":19,"week_start":"2022-07-11T00:00:00"},{"contract_count":21,"week_start":"2022-07-18T00:00:00"},{"contract_count":15,"week_start":"2022-07-25T00:00:00"},{"contract_count":21,"week_start":"2022-08-01T00:00:00"},{"contract_count":17,"week_start":"2022-08-08T00:00:00"},{"contract_count":18,"week_start":"2022-08-15T00:00:00"},{"contract_count":20,"week_start":"2022-08-22T00:00:00"},{"contract_count":12,"week_start":"2022-08-29T00:00:00"},{"contract_count":14,"week_start":"2022-09-05T00:00:00"},{"contract_count":14,"week_start":"2022-09-12T00:00:00"},{"contract_count":19,"week_start":"2022-09-19T00:00:00"},{"contract_count":18,"week_start":"2022-09-26T00:00:00"},{"contract_count":21,"week_start":"2022-10-03T00:00:00"},{"contract_count":16,"week_start":"2022-10-10T00:00:00"},{"contract_count":14,"week_start":"2022-10-17T00:00:00"},{"contract_count":15,"week_start":"2022-10-24T00:00:00"},{"contract_count":15,"week_start":"2022-10-31T00:00:00"},{"contract_count":11,"week_start":"2022-11-07T00:00:00"},{"contract_count":7,"week_start":"2022-11-14T00:00:00"},{"contract_count":7,"week_start":"2022-11-21T00:00:00"},{"contract_count":12,"week_start":"2022-11-28T00:00:00"},{"contract_count":8,"week_start":"2022-12-05T00:00:00"},{"contract_count":13,"week_start":"2022-12-12T00:00:00"},{"contract_count":9,"week_start":"2022-12-19T00:00:00"},{"contract_count":7,"week_start":"2022-12-26T00:00:00"},{"contract_count":9,"week_start":"2023-01-02T00:00:00"},{"contract_count":10,"week_start":"2023-01-09T00:00:00"},{"contract_count":7,"week_start":"2023-01-16T00:00:00"},{"contract_count":9,"week_start":"2023-01-23T00:00:00"},{"contract_count":12,"week_start":"2023-01-30T00:00:00"},{"contract_count":11,"week_start":"2023-02-06T00:00:00"},{"contract_count":17,"week_start":"2023-02-13T00:00:00"},{"contract_count":20,"week_start":"2023-02-20T00:00:00"},{"contract_count":19,"week_start":"2023-02-27T00:00:00"},{"contract_count":20,"week_start":"2023-03-06T00:00:00"},{"contract_count":9,"week_start":"2023-03-13T00:00:00"},{"contract_count":15,"week_start":"2023-03-20T00:00:00"},{"contract_count":24,"week_start":"2023-03-27T00:00:00"},{"contract_count":17,"week_start":"2023-04-03T00:00:00"},{"contract_count":14,"week_start":"2023-04-10T00:00:00"},{"contract_count":12,"week_start":"2023-04-17T00:00:00"},{"contract_count":16,"week_start":"2023-04-24T00:00:00"},{"contract_count":10,"week_start":"2023-05-01T00:00:00"},{"contract_count":16,"week_start":"2023-05-08T00:00:00"},{"contract_count":19,"week_start":"2023-05-15T00:00:00"},{"contract_count":18,"week_start":"2023-05-22T00:00:00"},{"contract_count":15,"week_start":"2023-05-29T00:00:00"},{"contract_count":10,"week_start":"2023-06-05T00:00:00"},{"contract_count":11,"week_start":"2023-06-12T00:00:00"},{"contract_count":9,"week_start":"2023-06-19T00:00:00"},{"contract_count":13,"week_start":"2023-06-26T00:00:00"},{"contract_count":14,"week_start":"2023-07-03T00:00:00"},{"contract_count":15,"week_start":"2023-07-10T00:00:00"},{"contract_count":19,"week_start":"2023-07-17T00:00:00"},{"contract_count":9,"week_start":"2023-07-24T00:00:00"},{"contract_count":11,"week_start":"2023-07-31T00:00:00"},{"contract_count":10,"week_start":"2023-08-07T00:00:00"},{"contract_count":18,"week_start":"2023-08-14T00:00:00"},{"contract_count":13,"week_start":"2023-08-21T00:00:00"},{"contract_count":14,"week_start":"2023-08-28T00:00:00"},{"contract_count":8,"week_start":"2023-09-04T00:00:00"},{"contract_count":11,"week_start":"2023-09-11T00:00:00"},{"contract_count":12,"week_start":"2023-09-18T00:00:00"},{"contract_count":15,"week_start":"2023-09-25T00:00:00"},{"contract_count":16,"week_start":"2023-10-02T00:00:00"},{"contract_count":12,"week_start":"2023-10-09T00:00:00"},{"contract_count":13,"week_start":"2023-10-16T00:00:00"},{"contract_count":13,"week_start":"2023-10-23T00:00:00"},{"contract_count":13,"week_start":"2023-10-30T00:00:00"},{"contract_count":10,"week_start":"2023-11-06T00:00:00"},{"contract_count":17,"week_start":"2023-11-13T00:00:00"},{"contract_count":6,"week_start":"2023-11-20T00:00:00"},{"contract_count":12,"week_start":"2023-11-27T00:00:00"},{"contract_count":13,"week_start":"2023-12-04T00:00:00"},{"contract_count":7,"week_start":"2023-12-11T00:00:00"},{"contract_count":11,"week_start":"2023-12-18T00:00:00"},{"contract_count":7,"week_start":"2023-12-25T00:00:00"},{"contract_count":9,"week_start":"2024-01-01T00:00:00"},{"contract_count":7,"week_start":"2024-01-08T00:00:00"},{"contract_count":8,"week_start":"2024-01-15T00:00:00"},{"contract_count":19,"week_start":"2024-01-22T00:00:00"},{"contract_count":12,"week_start":"2024-01-29T00:00:00"},{"contract_count":26,"week_start":"2024-02-05T00:00:00"},{"contract_count":16,"week_start":"2024-02-12T00:00:00"},{"contract_count":13,"week_start":"2024-02-19T00:00:00"},{"contract_count":20,"week_start":"2024-02-26T00:00:00"},{"contract_count":19,"week_start":"2024-03-04T00:00:00"},{"contract_count":16,"week_start":"2024-03-11T00:00:00"},{"contract_count":23,"week_start":"2024-03-18T00:00:00"},{"contract_count":21,"week_start":"2024-03-25T00:00:00"},{"contract_count":16,"week_start":"2024-04-01T00:00:00"},{"contract_count":15,"week_start":"2024-04-08T00:00:00"},{"contract_count":12,"week_start":"2024-04-15T00:00:00"},{"contract_count":14,"week_start":"2024-04-22T00:00:00"},{"contract_count":21,"week_start":"2024-04-29T00:00:00"},{"contract_count":14,"week_start":"2024-05-06T00:00:00"},{"contract_count":23,"week_start":"2024-05-13T00:00:00"},{"contract_count":16,"week_start":"2024-05-20T00:00:00"},{"contract_count":7,"week_start":"2024-05-27T00:00:00"},{"contract_count":2,"week_start":"2024-06-03T00:00:00"},{"contract_count":19,"week_start":"2024-06-10T00:00:00"},{"contract_count":22,"week_start":"2024-06-17T00:00:00"},{"contract_count":11,"week_start":"2024-06-24T00:00:00"},{"contract_count":10,"week_start":"2024-07-01T00:00:00"},{"contract_count":14,"week_start":"2024-07-08T00:00:00"},{"contract_count":23,"week_start":"2024-07-15T00:00:00"},{"contract_count":11,"week_start":"2024-07-22T00:00:00"},{"contract_count":18,"week_start":"2024-07-29T00:00:00"},{"contract_count":22,"week_start":"2024-08-05T00:00:00"},{"contract_count":9,"week_start":"2024-08-12T00:00:00"},{"contract_count":15,"week_start":"2024-08-19T00:00:00"},{"contract_count":9,"week_start":"2024-08-26T00:00:00"},{"contract_count":16,"week_start":"2024-09-02T00:00:00"},{"contract_count":14,"week_start":"2024-09-09T00:00:00"},{"contract_count":15,"week_start":"2024-09-16T00:00:00"},{"contract_count":22,"week_start":"2024-09-23T00:00:00"},{"contract_count":20,"week_start":"2024-09-30T00:00:00"},{"contract_count":14,"week_start":"2024-10-07T00:00:00"},{"contract_count":10,"week_start":"2024-10-14T00:00:00"},{"contract_count":16,"week_start":"2024-10-21T00:00:00"},{"contract_count":19,"week_start":"2024-10-28T00:00:00"},{"contract_count":11,"week_start":"2024-11-04T00:00:00"},{"contract_count":18,"week_start":"2024-11-11T00:00:00"},{"contract_count":21,"week_start":"2024-11-18T00:00:00"},{"contract_count":7,"week_start":"2024-11-25T00:00:00"},{"contract_count":9,"week_start":"2024-12-02T00:00:00"},{"contract_count":12,"week_start":"2024-12-09T00:00:00"},{"contract_count":12,"week_start":"2024-12-16T00:00:00"},{"contract_count":7,"week_start":"2024-12-23T00:00:00"},{"contract_count":7,"week_start":"2024-12-30T00:00:00"},{"contract_count":6,"week_start":"2025-01-06T00:00:00"},{"contract_count":10,"week_start":"2025-01-13T00:00:00"},{"contract_count":17,"week_start":"2025-01-20T00:00:00"},{"contract_count":30,"week_start":"2025-01-27T00:00:00"},{"contract_count":14,"week_start":"2025-02-03T00:00:00"},{"contract_count":19,"week_start":"2025-02-10T00:00:00"},{"contract_count":23,"week_start":"2025-02-17T00:00:00"},{"contract_count":14,"week_start":"2025-02-24T00:00:00"},{"contract_count":23,"week_start":"2025-03-03T00:00:00"},{"contract_count":17,"week_start":"2025-03-10T00:00:00"},{"contract_count":18,"week_start":"2025-03-17T00:00:00"},{"contract_count":19,"week_start":"2025-03-24T00:00:00"},{"contract_count":18,"week_start":"2025-03-31T00:00:00"},{"contract_count":17,"week_start":"2025-04-07T00:00:00"},{"contract_count":27,"week_start":"2025-04-14T00:00:00"},{"contract_count":19,"week_start":"2025-04-21T00:00:00"},{"contract_count":10,"week_start":"2025-04-28T00:00:00"},{"contract_count":22,"week_start":"2025-05-05T00:00:00"},{"contract_count":15,"week_start":"2025-05-12T00:00:00"},{"contract_count":14,"week_start":"2025-05-19T00:00:00"},{"contract_count":12,"week_start":"2025-05-26T00:00:00"},{"contract_count":17,"week_start":"2025-06-02T00:00:00"},{"contract_count":15,"week_start":"2025-06-09T00:00:00"},{"contract_count":17,"week_start":"2025-06-16T00:00:00"},{"contract_count":16,"week_start":"2025-06-23T00:00:00"},{"contract_count":21,"week_start":"2025-06-30T00:00:00"},{"contract_count":9,"week_start":"2025-07-07T00:00:00"},{"contract_count":19,"week_start":"2025-07-14T00:00:00"},{"contract_count":21,"week_start":"2025-07-21T00:00:00"},{"contract_count":18,"week_start":"2025-07-28T00:00:00"},{"contract_count":15,"week_start":"2025-08-04T00:00:00"},{"contract_count":20,"week_start":"2025-08-11T00:00:00"},{"contract_count":25,"week_start":"2025-08-18T00:00:00"},{"contract_count":23,"week_start":"2025-08-25T00:00:00"},{"contract_count":14,"week_start":"2025-09-01T00:00:00"},{"contract_count":27,"week_start":"2025-09-08T00:00:00"},{"contract_count":20,"week_start":"2025-09-15T00:00:00"},{"contract_count":23,"week_start":"2025-09-22T00:00:00"},{"contract_count":19,"week_start":"2025-09-29T00:00:00"},{"contract_count":24,"week_start":"2025-10-06T00:00:00"},{"contract_count":17,"week_start":"2025-10-13T00:00:00"},{"contract_count":19,"week_start":"2025-10-20T00:00:00"},{"contract_count":18,"week_start":"2025-10-27T00:00:00"},{"contract_count":9,"week_start":"2025-11-03T00:00:00"},{"contract_count":17,"week_start":"2025-11-10T00:00:00"},{"contract_count":16,"week_start":"2025-11-17T00:00:00"},{"contract_count":14,"week_start":"2025-11-24T00:00:00"},{"contract_count":16,"week_start":"2025-12-01T00:00:00"},{"contract_count":12,"week_start":"2025-12-08T00:00:00"},{"contract_count":11,"week_start":"2025-12-15T00:00:00"},{"contract_count":6,"week_start":"2025-12-22T00:00:00"},{"contract_count":3,"week_start":"2025-12-29T00:00:00"},{"contract_count":6,"week_start":"2026-01-05T00:00:00"},{"contract_count":10,"week_start":"2026-01-12T00:00:00"},{"contract_count":10,"week_start":"2026-01-19T00:00:00"},{"contract_count":14,"week_start":"2026-01-26T00:00:00"},{"contract_count":11,"week_start":"2026-02-02T00:00:00"},{"contract_count":19,"week_start":"2026-02-09T00:00:00"},{"contract_count":9,"week_start":"2026-02-16T00:00:00"},{"contract_count":20,"week_start":"2026-02-23T00:00:00"},{"contract_count":23,"week_start":"2026-03-02T00:00:00"},{"contract_count":24,"week_start":"2026-03-09T00:00:00"},{"contract_count":17,"week_start":"2026-03-16T00:00:00"},{"contract_count":21,"week_start":"2026-03-23T00:00:00"},{"contract_count":21,"week_start":"2026-03-30T00:00:00"},{"contract_count":15,"week_start":"2026-04-06T00:00:00"},{"contract_count":19,"week_start":"2026-04-13T00:00:00"},{"contract_count":20,"week_start":"2026-04-20T00:00:00"},{"contract_count":17,"week_start":"2026-04-27T00:00:00"},{"contract_count":19,"week_start":"2026-05-04T00:00:00"},{"contract_count":28,"week_start":"2026-05-11T00:00:00"},{"contract_count":29,"week_start":"2026-05-18T00:00:00"},{"contract_count":20,"week_start":"2026-05-25T00:00:00"}]},"\n      SELECT DATEADD(week, DATEDIFF(week, 0, SaleDate), 0) AS week_start,\n             SUM(CAST(SalePrice AS BIGINT)) AS total_volume,\n             COUNT(DISTINCT ListingMLS_ID) AS tx_count\n      FROM   Tbl_Listings_MLS\n      WHERE  MLS_Source = 'SF'\n        AND  FK_Geo_District_Name = 'SF District 9'\n        AND  PropertyType IN ('CNDO','TWNH','COOP')\n        AND  SaleDate IS NOT NULL\n        AND  SalePrice > 0\n        AND  SalePrice < 50000000\n        AND  SaleDate >= '2020-01-01'\n        AND  DATEADD(week, DATEDIFF(week, 0, SaleDate), 0) < DATEADD(week, DATEDIFF(week, 0, GETDATE()), 0)\n      GROUP  BY DATEADD(week, DATEDIFF(week, 0, SaleDate), 0)\n      ORDER  BY week_start":{"results":[{"total_volume":4465500,"tx_count":5,"week_start":"2019-12-30T00:00:00"},{"total_volume":19350400,"tx_count":15,"week_start":"2020-01-06T00:00:00"},{"total_volume":18245000,"tx_count":16,"week_start":"2020-01-13T00:00:00"},{"total_volume":9265000,"tx_count":6,"week_start":"2020-01-20T00:00:00"},{"total_volume":6464190,"tx_count":6,"week_start":"2020-01-27T00:00:00"},{"total_volume":10113000,"tx_count":9,"week_start":"2020-02-03T00:00:00"},{"total_volume":18258328,"tx_count":16,"week_start":"2020-02-10T00:00:00"},{"total_volume":20434388,"tx_count":15,"week_start":"2020-02-17T00:00:00"},{"total_volume":29329818,"tx_count":22,"week_start":"2020-02-24T00:00:00"},{"total_volume":29308100,"tx_count":20,"week_start":"2020-03-02T00:00:00"},{"total_volume":28811087,"tx_count":24,"week_start":"2020-03-09T00:00:00"},{"total_volume":36031500,"tx_count":26,"week_start":"2020-03-16T00:00:00"},{"total_volume":37831500,"tx_count":26,"week_start":"2020-03-23T00:00:00"},{"total_volume":10467000,"tx_count":10,"week_start":"2020-03-30T00:00:00"},{"total_volume":4788000,"tx_count":4,"week_start":"2020-04-06T00:00:00"},{"total_volume":14511108,"tx_count":10,"week_start":"2020-04-13T00:00:00"},{"total_volume":15717549,"tx_count":15,"week_start":"2020-04-20T00:00:00"},{"total_volume":11362000,"tx_count":8,"week_start":"2020-04-27T00:00:00"},{"total_volume":10598682,"tx_count":12,"week_start":"2020-05-04T00:00:00"},{"total_volume":6370000,"tx_count":7,"week_start":"2020-05-11T00:00:00"},{"total_volume":8433081,"tx_count":9,"week_start":"2020-05-18T00:00:00"},{"total_volume":8080000,"tx_count":6,"week_start":"2020-05-25T00:00:00"},{"total_volume":7700000,"tx_count":7,"week_start":"2020-06-01T00:00:00"},{"total_volume":23351387,"tx_count":18,"week_start":"2020-06-08T00:00:00"},{"total_volume":14560000,"tx_count":10,"week_start":"2020-06-15T00:00:00"},{"total_volume":16895236,"tx_count":14,"week_start":"2020-06-22T00:00:00"},{"total_volume":30466000,"tx_count":22,"week_start":"2020-06-29T00:00:00"},{"total_volume":20859823,"tx_count":19,"week_start":"2020-07-06T00:00:00"},{"total_volume":22079500,"tx_count":15,"week_start":"2020-07-13T00:00:00"},{"total_volume":34612000,"tx_count":26,"week_start":"2020-07-20T00:00:00"},{"total_volume":20634888,"tx_count":19,"week_start":"2020-07-27T00:00:00"},{"total_volume":25707000,"tx_count":21,"week_start":"2020-08-03T00:00:00"},{"total_volume":24018000,"tx_count":17,"week_start":"2020-08-10T00:00:00"},{"total_volume":17330668,"tx_count":12,"week_start":"2020-08-17T00:00:00"},{"total_volume":28824037,"tx_count":24,"week_start":"2020-08-24T00:00:00"},{"total_volume":19091271,"tx_count":16,"week_start":"2020-08-31T00:00:00"},{"total_volume":29361500,"tx_count":22,"week_start":"2020-09-07T00:00:00"},{"total_volume":42124888,"tx_count":33,"week_start":"2020-09-14T00:00:00"},{"total_volume":22252499,"tx_count":22,"week_start":"2020-09-21T00:00:00"},{"total_volume":35061000,"tx_count":24,"week_start":"2020-09-28T00:00:00"},{"total_volume":12391000,"tx_count":11,"week_start":"2020-10-05T00:00:00"},{"total_volume":25647644,"tx_count":20,"week_start":"2020-10-12T00:00:00"},{"total_volume":26186940,"tx_count":22,"week_start":"2020-10-19T00:00:00"},{"total_volume":22036000,"tx_count":20,"week_start":"2020-10-26T00:00:00"},{"total_volume":29303800,"tx_count":25,"week_start":"2020-11-02T00:00:00"},{"total_volume":25894875,"tx_count":23,"week_start":"2020-11-09T00:00:00"},{"total_volume":19756686,"tx_count":19,"week_start":"2020-11-16T00:00:00"},{"total_volume":25121725,"tx_count":23,"week_start":"2020-11-23T00:00:00"},{"total_volume":37160913,"tx_count":31,"week_start":"2020-11-30T00:00:00"},{"total_volume":34860588,"tx_count":30,"week_start":"2020-12-07T00:00:00"},{"total_volume":32795000,"tx_count":28,"week_start":"2020-12-14T00:00:00"},{"total_volume":29853794,"tx_count":26,"week_start":"2020-12-21T00:00:00"},{"total_volume":60997120,"tx_count":32,"week_start":"2020-12-28T00:00:00"},{"total_volume":34682500,"tx_count":28,"week_start":"2021-01-04T00:00:00"},{"total_volume":18854895,"tx_count":20,"week_start":"2021-01-11T00:00:00"},{"total_volume":25450500,"tx_count":23,"week_start":"2021-01-18T00:00:00"},{"total_volume":33203504,"tx_count":23,"week_start":"2021-01-25T00:00:00"},{"total_volume":33143914,"tx_count":21,"week_start":"2021-02-01T00:00:00"},{"total_volume":16104500,"tx_count":17,"week_start":"2021-02-08T00:00:00"},{"total_volume":25107488,"tx_count":21,"week_start":"2021-02-15T00:00:00"},{"total_volume":32729350,"tx_count":25,"week_start":"2021-02-22T00:00:00"},{"total_volume":37229348,"tx_count":35,"week_start":"2021-03-01T00:00:00"},{"total_volume":44735000,"tx_count":35,"week_start":"2021-03-08T00:00:00"},{"total_volume":35022000,"tx_count":28,"week_start":"2021-03-15T00:00:00"},{"total_volume":61271276,"tx_count":43,"week_start":"2021-03-22T00:00:00"},{"total_volume":44748226,"tx_count":39,"week_start":"2021-03-29T00:00:00"},{"total_volume":45121499,"tx_count":35,"week_start":"2021-04-05T00:00:00"},{"total_volume":37922495,"tx_count":33,"week_start":"2021-04-12T00:00:00"},{"total_volume":50127732,"tx_count":39,"week_start":"2021-04-19T00:00:00"},{"total_volume":43330264,"tx_count":39,"week_start":"2021-04-26T00:00:00"},{"total_volume":29077007,"tx_count":27,"week_start":"2021-05-03T00:00:00"},{"total_volume":38039000,"tx_count":29,"week_start":"2021-05-10T00:00:00"},{"total_volume":43610500,"tx_count":34,"week_start":"2021-05-17T00:00:00"},{"total_volume":60175583,"tx_count":47,"week_start":"2021-05-24T00:00:00"},{"total_volume":41410233,"tx_count":36,"week_start":"2021-05-31T00:00:00"},{"total_volume":46469500,"tx_count":39,"week_start":"2021-06-07T00:00:00"},{"total_volume":50697700,"tx_count":37,"week_start":"2021-06-14T00:00:00"},{"total_volume":39629418,"tx_count":32,"week_start":"2021-06-21T00:00:00"},{"total_volume":47965775,"tx_count":34,"week_start":"2021-06-28T00:00:00"},{"total_volume":14090000,"tx_count":14,"week_start":"2021-07-05T00:00:00"},{"total_volume":44011346,"tx_count":34,"week_start":"2021-07-12T00:00:00"},{"total_volume":43832036,"tx_count":33,"week_start":"2021-07-19T00:00:00"},{"total_volume":51300000,"tx_count":33,"week_start":"2021-07-26T00:00:00"},{"total_volume":46760500,"tx_count":38,"week_start":"2021-08-02T00:00:00"},{"total_volume":35394000,"tx_count":27,"week_start":"2021-08-09T00:00:00"},{"total_volume":28602500,"tx_count":24,"week_start":"2021-08-16T00:00:00"},{"total_volume":38884206,"tx_count":27,"week_start":"2021-08-23T00:00:00"},{"total_volume":29429303,"tx_count":24,"week_start":"2021-08-30T00:00:00"},{"total_volume":28311622,"tx_count":24,"week_start":"2021-09-06T00:00:00"},{"total_volume":27613000,"tx_count":22,"week_start":"2021-09-13T00:00:00"},{"total_volume":14857500,"tx_count":15,"week_start":"2021-09-20T00:00:00"},{"total_volume":39188000,"tx_count":28,"week_start":"2021-09-27T00:00:00"},{"total_volume":38793150,"tx_count":27,"week_start":"2021-10-04T00:00:00"},{"total_volume":36498053,"tx_count":27,"week_start":"2021-10-11T00:00:00"},{"total_volume":33019388,"tx_count":27,"week_start":"2021-10-18T00:00:00"},{"total_volume":30771614,"tx_count":26,"week_start":"2021-10-25T00:00:00"},{"total_volume":35212317,"tx_count":26,"week_start":"2021-11-01T00:00:00"},{"total_volume":47247300,"tx_count":34,"week_start":"2021-11-08T00:00:00"},{"total_volume":27369542,"tx_count":20,"week_start":"2021-11-15T00:00:00"},{"total_volume":31566499,"tx_count":28,"week_start":"2021-11-22T00:00:00"},{"total_volume":37449888,"tx_count":30,"week_start":"2021-11-29T00:00:00"},{"total_volume":35112451,"tx_count":28,"week_start":"2021-12-06T00:00:00"},{"total_volume":36076721,"tx_count":20,"week_start":"2021-12-13T00:00:00"},{"total_volume":27860000,"tx_count":20,"week_start":"2021-12-20T00:00:00"},{"total_volume":17799495,"tx_count":17,"week_start":"2021-12-27T00:00:00"},{"total_volume":15070000,"tx_count":13,"week_start":"2022-01-03T00:00:00"},{"total_volume":14377000,"tx_count":11,"week_start":"2022-01-10T00:00:00"},{"total_volume":14514002,"tx_count":13,"week_start":"2022-01-17T00:00:00"},{"total_volume":22630500,"tx_count":17,"week_start":"2022-01-24T00:00:00"},{"total_volume":28836000,"tx_count":22,"week_start":"2022-01-31T00:00:00"},{"total_volume":24174388,"tx_count":20,"week_start":"2022-02-07T00:00:00"},{"total_volume":32103000,"tx_count":24,"week_start":"2022-02-14T00:00:00"},{"total_volume":21915964,"tx_count":18,"week_start":"2022-02-21T00:00:00"},{"total_volume":30637000,"tx_count":24,"week_start":"2022-02-28T00:00:00"},{"total_volume":44549000,"tx_count":33,"week_start":"2022-03-07T00:00:00"},{"total_volume":32438875,"tx_count":27,"week_start":"2022-03-14T00:00:00"},{"total_volume":36656000,"tx_count":30,"week_start":"2022-03-21T00:00:00"},{"total_volume":38623163,"tx_count":27,"week_start":"2022-03-28T00:00:00"},{"total_volume":37283162,"tx_count":28,"week_start":"2022-04-04T00:00:00"},{"total_volume":35354500,"tx_count":27,"week_start":"2022-04-11T00:00:00"},{"total_volume":50276760,"tx_count":34,"week_start":"2022-04-18T00:00:00"},{"total_volume":31090122,"tx_count":24,"week_start":"2022-04-25T00:00:00"},{"total_volume":41778000,"tx_count":33,"week_start":"2022-05-02T00:00:00"},{"total_volume":32136392,"tx_count":28,"week_start":"2022-05-09T00:00:00"},{"total_volume":29023294,"tx_count":24,"week_start":"2022-05-16T00:00:00"},{"total_volume":23295523,"tx_count":22,"week_start":"2022-05-23T00:00:00"},{"total_volume":23740999,"tx_count":22,"week_start":"2022-05-30T00:00:00"},{"total_volume":32262000,"tx_count":21,"week_start":"2022-06-06T00:00:00"},{"total_volume":30069500,"tx_count":22,"week_start":"2022-06-13T00:00:00"},{"total_volume":19385874,"tx_count":17,"week_start":"2022-06-20T00:00:00"},{"total_volume":35954278,"tx_count":27,"week_start":"2022-06-27T00:00:00"},{"total_volume":20014542,"tx_count":17,"week_start":"2022-07-04T00:00:00"},{"total_volume":13526776,"tx_count":14,"week_start":"2022-07-11T00:00:00"},{"total_volume":32667431,"tx_count":23,"week_start":"2022-07-18T00:00:00"},{"total_volume":21694100,"tx_count":18,"week_start":"2022-07-25T00:00:00"},{"total_volume":12969000,"tx_count":12,"week_start":"2022-08-01T00:00:00"},{"total_volume":21572000,"tx_count":19,"week_start":"2022-08-08T00:00:00"},{"total_volume":13227500,"tx_count":13,"week_start":"2022-08-15T00:00:00"},{"total_volume":21850616,"tx_count":18,"week_start":"2022-08-22T00:00:00"},{"total_volume":25914000,"tx_count":22,"week_start":"2022-08-29T00:00:00"},{"total_volume":13461500,"tx_count":11,"week_start":"2022-09-05T00:00:00"},{"total_volume":25387517,"tx_count":18,"week_start":"2022-09-12T00:00:00"},{"total_volume":25206500,"tx_count":20,"week_start":"2022-09-19T00:00:00"},{"total_volume":13259108,"tx_count":13,"week_start":"2022-09-26T00:00:00"},{"total_volume":24452867,"tx_count":20,"week_start":"2022-10-03T00:00:00"},{"total_volume":9883000,"tx_count":10,"week_start":"2022-10-10T00:00:00"},{"total_volume":24074250,"tx_count":19,"week_start":"2022-10-17T00:00:00"},{"total_volume":15668000,"tx_count":12,"week_start":"2022-10-24T00:00:00"},{"total_volume":26847294,"tx_count":21,"week_start":"2022-10-31T00:00:00"},{"total_volume":8942808,"tx_count":10,"week_start":"2022-11-07T00:00:00"},{"total_volume":19014888,"tx_count":15,"week_start":"2022-11-14T00:00:00"},{"total_volume":8663000,"tx_count":5,"week_start":"2022-11-21T00:00:00"},{"total_volume":9810742,"tx_count":12,"week_start":"2022-11-28T00:00:00"},{"total_volume":9994000,"tx_count":12,"week_start":"2022-12-05T00:00:00"},{"total_volume":9523783,"tx_count":12,"week_start":"2022-12-12T00:00:00"},{"total_volume":10730000,"tx_count":7,"week_start":"2022-12-19T00:00:00"},{"total_volume":14885826,"tx_count":13,"week_start":"2022-12-26T00:00:00"},{"total_volume":8217253,"tx_count":8,"week_start":"2023-01-02T00:00:00"},{"total_volume":4360000,"tx_count":4,"week_start":"2023-01-09T00:00:00"},{"total_volume":18649000,"tx_count":8,"week_start":"2023-01-16T00:00:00"},{"total_volume":8560500,"tx_count":11,"week_start":"2023-01-23T00:00:00"},{"total_volume":10901000,"tx_count":7,"week_start":"2023-01-30T00:00:00"},{"total_volume":6179048,"tx_count":8,"week_start":"2023-02-06T00:00:00"},{"total_volume":20087379,"tx_count":17,"week_start":"2023-02-13T00:00:00"},{"total_volume":11558958,"tx_count":11,"week_start":"2023-02-20T00:00:00"},{"total_volume":11076287,"tx_count":10,"week_start":"2023-02-27T00:00:00"},{"total_volume":20605900,"tx_count":15,"week_start":"2023-03-06T00:00:00"},{"total_volume":17980459,"tx_count":18,"week_start":"2023-03-13T00:00:00"},{"total_volume":17422000,"tx_count":12,"week_start":"2023-03-20T00:00:00"},{"total_volume":24858000,"tx_count":23,"week_start":"2023-03-27T00:00:00"},{"total_volume":15789535,"tx_count":14,"week_start":"2023-04-03T00:00:00"},{"total_volume":29327500,"tx_count":14,"week_start":"2023-04-10T00:00:00"},{"total_volume":25694000,"tx_count":24,"week_start":"2023-04-17T00:00:00"},{"total_volume":17919289,"tx_count":15,"week_start":"2023-04-24T00:00:00"},{"total_volume":12735719,"tx_count":10,"week_start":"2023-05-01T00:00:00"},{"total_volume":18799388,"tx_count":16,"week_start":"2023-05-08T00:00:00"},{"total_volume":11624000,"tx_count":11,"week_start":"2023-05-15T00:00:00"},{"total_volume":22563600,"tx_count":20,"week_start":"2023-05-22T00:00:00"},{"total_volume":16989000,"tx_count":15,"week_start":"2023-05-29T00:00:00"},{"total_volume":17759000,"tx_count":13,"week_start":"2023-06-05T00:00:00"},{"total_volume":19824500,"tx_count":16,"week_start":"2023-06-12T00:00:00"},{"total_volume":13666008,"tx_count":10,"week_start":"2023-06-19T00:00:00"},{"total_volume":19838988,"tx_count":15,"week_start":"2023-06-26T00:00:00"},{"total_volume":10589000,"tx_count":12,"week_start":"2023-07-03T00:00:00"},{"total_volume":11312945,"tx_count":9,"week_start":"2023-07-10T00:00:00"},{"total_volume":14445800,"tx_count":13,"week_start":"2023-07-17T00:00:00"},{"total_volume":11258000,"tx_count":8,"week_start":"2023-07-24T00:00:00"},{"total_volume":11960414,"tx_count":12,"week_start":"2023-07-31T00:00:00"},{"total_volume":8903691,"tx_count":9,"week_start":"2023-08-07T00:00:00"},{"total_volume":20029038,"tx_count":16,"week_start":"2023-08-14T00:00:00"},{"total_volume":9253888,"tx_count":9,"week_start":"2023-08-21T00:00:00"},{"total_volume":19614523,"tx_count":17,"week_start":"2023-08-28T00:00:00"},{"total_volume":13119000,"tx_count":11,"week_start":"2023-09-04T00:00:00"},{"total_volume":17710796,"tx_count":18,"week_start":"2023-09-11T00:00:00"},{"total_volume":23008000,"tx_count":17,"week_start":"2023-09-18T00:00:00"},{"total_volume":13421500,"tx_count":12,"week_start":"2023-09-25T00:00:00"},{"total_volume":9600000,"tx_count":10,"week_start":"2023-10-02T00:00:00"},{"total_volume":12553500,"tx_count":10,"week_start":"2023-10-09T00:00:00"},{"total_volume":5900000,"tx_count":5,"week_start":"2023-10-16T00:00:00"},{"total_volume":20356000,"tx_count":20,"week_start":"2023-10-23T00:00:00"},{"total_volume":16930000,"tx_count":12,"week_start":"2023-10-30T00:00:00"},{"total_volume":10544288,"tx_count":10,"week_start":"2023-11-06T00:00:00"},{"total_volume":17606500,"tx_count":13,"week_start":"2023-11-13T00:00:00"},{"total_volume":8977000,"tx_count":8,"week_start":"2023-11-20T00:00:00"},{"total_volume":12763000,"tx_count":10,"week_start":"2023-11-27T00:00:00"},{"total_volume":16504099,"tx_count":17,"week_start":"2023-12-04T00:00:00"},{"total_volume":11377018,"tx_count":9,"week_start":"2023-12-11T00:00:00"},{"total_volume":16433130,"tx_count":16,"week_start":"2023-12-18T00:00:00"},{"total_volume":13075000,"tx_count":12,"week_start":"2023-12-25T00:00:00"},{"total_volume":10511000,"tx_count":7,"week_start":"2024-01-01T00:00:00"},{"total_volume":9510000,"tx_count":7,"week_start":"2024-01-08T00:00:00"},{"total_volume":8953000,"tx_count":7,"week_start":"2024-01-15T00:00:00"},{"total_volume":11376888,"tx_count":10,"week_start":"2024-01-22T00:00:00"},{"total_volume":10590000,"tx_count":8,"week_start":"2024-01-29T00:00:00"},{"total_volume":9945000,"tx_count":7,"week_start":"2024-02-05T00:00:00"},{"total_volume":17557800,"tx_count":15,"week_start":"2024-02-12T00:00:00"},{"total_volume":27053000,"tx_count":17,"week_start":"2024-02-19T00:00:00"},{"total_volume":32674999,"tx_count":22,"week_start":"2024-02-26T00:00:00"},{"total_volume":14379000,"tx_count":14,"week_start":"2024-03-04T00:00:00"},{"total_volume":19664873,"tx_count":17,"week_start":"2024-03-11T00:00:00"},{"total_volume":12810888,"tx_count":11,"week_start":"2024-03-18T00:00:00"},{"total_volume":25650503,"tx_count":20,"week_start":"2024-03-25T00:00:00"},{"total_volume":19679300,"tx_count":17,"week_start":"2024-04-01T00:00:00"},{"total_volume":28629000,"tx_count":23,"week_start":"2024-04-08T00:00:00"},{"total_volume":19068788,"tx_count":15,"week_start":"2024-04-15T00:00:00"},{"total_volume":14973500,"tx_count":15,"week_start":"2024-04-22T00:00:00"},{"total_volume":29377000,"tx_count":21,"week_start":"2024-04-29T00:00:00"},{"total_volume":15720000,"tx_count":13,"week_start":"2024-05-06T00:00:00"},{"total_volume":13055294,"tx_count":13,"week_start":"2024-05-13T00:00:00"},{"total_volume":16717512,"tx_count":15,"week_start":"2024-05-20T00:00:00"},{"total_volume":26834000,"tx_count":20,"week_start":"2024-05-27T00:00:00"},{"total_volume":14077970,"tx_count":12,"week_start":"2024-06-03T00:00:00"},{"total_volume":15316000,"tx_count":15,"week_start":"2024-06-10T00:00:00"},{"total_volume":5799000,"tx_count":8,"week_start":"2024-06-17T00:00:00"},{"total_volume":18040000,"tx_count":16,"week_start":"2024-06-24T00:00:00"},{"total_volume":14320000,"tx_count":11,"week_start":"2024-07-01T00:00:00"},{"total_volume":35053500,"tx_count":27,"week_start":"2024-07-08T00:00:00"},{"total_volume":15910000,"tx_count":11,"week_start":"2024-07-15T00:00:00"},{"total_volume":16223134,"tx_count":13,"week_start":"2024-07-22T00:00:00"},{"total_volume":11443000,"tx_count":12,"week_start":"2024-07-29T00:00:00"},{"total_volume":12313799,"tx_count":13,"week_start":"2024-08-05T00:00:00"},{"total_volume":21344388,"tx_count":16,"week_start":"2024-08-12T00:00:00"},{"total_volume":12609000,"tx_count":13,"week_start":"2024-08-19T00:00:00"},{"total_volume":19927500,"tx_count":20,"week_start":"2024-08-26T00:00:00"},{"total_volume":10985000,"tx_count":10,"week_start":"2024-09-02T00:00:00"},{"total_volume":9579000,"tx_count":10,"week_start":"2024-09-09T00:00:00"},{"total_volume":11491500,"tx_count":8,"week_start":"2024-09-16T00:00:00"},{"total_volume":14550523,"tx_count":13,"week_start":"2024-09-23T00:00:00"},{"total_volume":19047000,"tx_count":14,"week_start":"2024-09-30T00:00:00"},{"total_volume":22661500,"tx_count":17,"week_start":"2024-10-07T00:00:00"},{"total_volume":27651488,"tx_count":16,"week_start":"2024-10-14T00:00:00"},{"total_volume":17508288,"tx_count":12,"week_start":"2024-10-21T00:00:00"},{"total_volume":11912000,"tx_count":11,"week_start":"2024-10-28T00:00:00"},{"total_volume":23620888,"tx_count":19,"week_start":"2024-11-04T00:00:00"},{"total_volume":18953000,"tx_count":17,"week_start":"2024-11-11T00:00:00"},{"total_volume":16083629,"tx_count":12,"week_start":"2024-11-18T00:00:00"},{"total_volume":26747000,"tx_count":19,"week_start":"2024-11-25T00:00:00"},{"total_volume":13573000,"tx_count":12,"week_start":"2024-12-02T00:00:00"},{"total_volume":19693886,"tx_count":14,"week_start":"2024-12-09T00:00:00"},{"total_volume":17778500,"tx_count":12,"week_start":"2024-12-16T00:00:00"},{"total_volume":8875500,"tx_count":9,"week_start":"2024-12-23T00:00:00"},{"total_volume":16084000,"tx_count":6,"week_start":"2024-12-30T00:00:00"},{"total_volume":13546000,"tx_count":11,"week_start":"2025-01-06T00:00:00"},{"total_volume":21605000,"tx_count":16,"week_start":"2025-01-13T00:00:00"},{"total_volume":3254000,"tx_count":5,"week_start":"2025-01-20T00:00:00"},{"total_volume":15395000,"tx_count":11,"week_start":"2025-01-27T00:00:00"},{"total_volume":9286888,"tx_count":8,"week_start":"2025-02-03T00:00:00"},{"total_volume":26650500,"tx_count":21,"week_start":"2025-02-10T00:00:00"},{"total_volume":25661500,"tx_count":17,"week_start":"2025-02-17T00:00:00"},{"total_volume":26523302,"tx_count":23,"week_start":"2025-02-24T00:00:00"},{"total_volume":23416842,"tx_count":24,"week_start":"2025-03-03T00:00:00"},{"total_volume":18394062,"tx_count":16,"week_start":"2025-03-10T00:00:00"},{"total_volume":16565900,"tx_count":16,"week_start":"2025-03-17T00:00:00"},{"total_volume":19284888,"tx_count":21,"week_start":"2025-03-24T00:00:00"},{"total_volume":18487500,"tx_count":18,"week_start":"2025-03-31T00:00:00"},{"total_volume":31269000,"tx_count":21,"week_start":"2025-04-07T00:00:00"},{"total_volume":16701875,"tx_count":14,"week_start":"2025-04-14T00:00:00"},{"total_volume":20020770,"tx_count":17,"week_start":"2025-04-21T00:00:00"},{"total_volume":18145000,"tx_count":17,"week_start":"2025-04-28T00:00:00"},{"total_volume":31787500,"tx_count":25,"week_start":"2025-05-05T00:00:00"},{"total_volume":29573448,"tx_count":22,"week_start":"2025-05-12T00:00:00"},{"total_volume":18429050,"tx_count":15,"week_start":"2025-05-19T00:00:00"},{"total_volume":11980750,"tx_count":12,"week_start":"2025-05-26T00:00:00"},{"total_volume":17058375,"tx_count":13,"week_start":"2025-06-02T00:00:00"},{"total_volume":14602740,"tx_count":14,"week_start":"2025-06-09T00:00:00"},{"total_volume":19582938,"tx_count":19,"week_start":"2025-06-16T00:00:00"},{"total_volume":19138266,"tx_count":12,"week_start":"2025-06-23T00:00:00"},{"total_volume":13132854,"tx_count":12,"week_start":"2025-06-30T00:00:00"},{"total_volume":19980675,"tx_count":19,"week_start":"2025-07-07T00:00:00"},{"total_volume":16965927,"tx_count":16,"week_start":"2025-07-14T00:00:00"},{"total_volume":19521000,"tx_count":14,"week_start":"2025-07-21T00:00:00"},{"total_volume":26797627,"tx_count":17,"week_start":"2025-07-28T00:00:00"},{"total_volume":17219800,"tx_count":14,"week_start":"2025-08-04T00:00:00"},{"total_volume":22290600,"tx_count":19,"week_start":"2025-08-11T00:00:00"},{"total_volume":19642500,"tx_count":20,"week_start":"2025-08-18T00:00:00"},{"total_volume":28331500,"tx_count":22,"week_start":"2025-08-25T00:00:00"},{"total_volume":16579000,"tx_count":18,"week_start":"2025-09-01T00:00:00"},{"total_volume":17482500,"tx_count":16,"week_start":"2025-09-08T00:00:00"},{"total_volume":27090500,"tx_count":20,"week_start":"2025-09-15T00:00:00"},{"total_volume":23395200,"tx_count":18,"week_start":"2025-09-22T00:00:00"},{"total_volume":23625999,"tx_count":17,"week_start":"2025-09-29T00:00:00"},{"total_volume":29869900,"tx_count":23,"week_start":"2025-10-06T00:00:00"},{"total_volume":17146500,"tx_count":16,"week_start":"2025-10-13T00:00:00"},{"total_volume":25111000,"tx_count":19,"week_start":"2025-10-20T00:00:00"},{"total_volume":22809300,"tx_count":17,"week_start":"2025-10-27T00:00:00"},{"total_volume":13928994,"tx_count":15,"week_start":"2025-11-03T00:00:00"},{"total_volume":24713000,"tx_count":17,"week_start":"2025-11-10T00:00:00"},{"total_volume":14312238,"tx_count":12,"week_start":"2025-11-17T00:00:00"},{"total_volume":18195000,"tx_count":14,"week_start":"2025-11-24T00:00:00"},{"total_volume":25807000,"tx_count":19,"week_start":"2025-12-01T00:00:00"},{"total_volume":16822233,"tx_count":17,"week_start":"2025-12-08T00:00:00"},{"total_volume":19646072,"tx_count":17,"week_start":"2025-12-15T00:00:00"},{"total_volume":6534282,"tx_count":8,"week_start":"2025-12-22T00:00:00"},{"total_volume":6291000,"tx_count":7,"week_start":"2025-12-29T00:00:00"},{"total_volume":14179500,"tx_count":10,"week_start":"2026-01-05T00:00:00"},{"total_volume":4842863,"tx_count":8,"week_start":"2026-01-12T00:00:00"},{"total_volume":10272585,"tx_count":10,"week_start":"2026-01-19T00:00:00"},{"total_volume":6690387,"tx_count":6,"week_start":"2026-01-26T00:00:00"},{"total_volume":11828000,"tx_count":9,"week_start":"2026-02-02T00:00:00"},{"total_volume":10196943,"tx_count":8,"week_start":"2026-02-09T00:00:00"},{"total_volume":18523588,"tx_count":17,"week_start":"2026-02-16T00:00:00"},{"total_volume":16887500,"tx_count":15,"week_start":"2026-02-23T00:00:00"},{"total_volume":27443500,"tx_count":16,"week_start":"2026-03-02T00:00:00"},{"total_volume":37368500,"tx_count":17,"week_start":"2026-03-09T00:00:00"},{"total_volume":17770776,"tx_count":13,"week_start":"2026-03-16T00:00:00"},{"total_volume":24343678,"tx_count":20,"week_start":"2026-03-23T00:00:00"},{"total_volume":27212650,"tx_count":22,"week_start":"2026-03-30T00:00:00"},{"total_volume":22702500,"tx_count":15,"week_start":"2026-04-06T00:00:00"},{"total_volume":29223025,"tx_count":21,"week_start":"2026-04-13T00:00:00"},{"total_volume":19173000,"tx_count":17,"week_start":"2026-04-20T00:00:00"},{"total_volume":20560000,"tx_count":14,"week_start":"2026-04-27T00:00:00"},{"total_volume":24619000,"tx_count":17,"week_start":"2026-05-04T00:00:00"},{"total_volume":21559500,"tx_count":18,"week_start":"2026-05-11T00:00:00"},{"total_volume":35545035,"tx_count":22,"week_start":"2026-05-18T00:00:00"},{"total_volume":19974000,"tx_count":15,"week_start":"2026-05-25T00:00:00"}]},"\n      SELECT DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) AS month_start,\n             SUM(CAST(SalePrice AS BIGINT)) AS total_volume,\n             COUNT(DISTINCT ListingMLS_ID) AS tx_count\n      FROM   Tbl_Listings_MLS\n      WHERE  MLS_Source = 'SF'\n        AND  FK_Geo_District_Name = 'SF District 9'\n        AND  PropertyType IN ('CNDO','TWNH','COOP')\n        AND  SaleDate IS NOT NULL\n        AND  SalePrice > 0\n        AND  SalePrice < 50000000\n        AND  SaleDate >= '2007-01-01'\n        AND  DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) < DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)\n      GROUP  BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)\n      ORDER  BY month_start":{"results":[{"month_start":"2007-01-01","total_volume":41437369,"tx_count":48},{"month_start":"2007-02-01","total_volume":50200911,"tx_count":63},{"month_start":"2007-03-01","total_volume":59764107,"tx_count":77},{"month_start":"2007-04-01","total_volume":56373970,"tx_count":68},{"month_start":"2007-05-01","total_volume":72391100,"tx_count":91},{"month_start":"2007-06-01","total_volume":69857477,"tx_count":87},{"month_start":"2007-07-01","total_volume":50689689,"tx_count":65},{"month_start":"2007-08-01","total_volume":69424088,"tx_count":82},{"month_start":"2007-09-01","total_volume":45797643,"tx_count":61},{"month_start":"2007-10-01","total_volume":51447380,"tx_count":66},{"month_start":"2007-11-01","total_volume":57451097,"tx_count":66},{"month_start":"2007-12-01","total_volume":37667211,"tx_count":52},{"month_start":"2008-01-01","total_volume":28587710,"tx_count":32},{"month_start":"2008-02-01","total_volume":29514354,"tx_count":36},{"month_start":"2008-03-01","total_volume":52759503,"tx_count":57},{"month_start":"2008-04-01","total_volume":51704867,"tx_count":65},{"month_start":"2008-05-01","total_volume":59405754,"tx_count":69},{"month_start":"2008-06-01","total_volume":62762716,"tx_count":74},{"month_start":"2008-07-01","total_volume":79150270,"tx_count":91},{"month_start":"2008-08-01","total_volume":55761345,"tx_count":76},{"month_start":"2008-09-01","total_volume":41162457,"tx_count":54},{"month_start":"2008-10-01","total_volume":45331876,"tx_count":59},{"month_start":"2008-11-01","total_volume":23377992,"tx_count":35},{"month_start":"2008-12-01","total_volume":20142515,"tx_count":34},{"month_start":"2009-01-01","total_volume":11797151,"tx_count":21},{"month_start":"2009-02-01","total_volume":22310014,"tx_count":33},{"month_start":"2009-03-01","total_volume":29528800,"tx_count":37},{"month_start":"2009-04-01","total_volume":42869400,"tx_count":49},{"month_start":"2009-05-01","total_volume":29484027,"tx_count":45},{"month_start":"2009-06-01","total_volume":36631589,"tx_count":56},{"month_start":"2009-07-01","total_volume":46643750,"tx_count":70},{"month_start":"2009-08-01","total_volume":39844717,"tx_count":59},{"month_start":"2009-09-01","total_volume":57676725,"tx_count":78},{"month_start":"2009-10-01","total_volume":45842051,"tx_count":67},{"month_start":"2009-11-01","total_volume":43083066,"tx_count":57},{"month_start":"2009-12-01","total_volume":40447746,"tx_count":60},{"month_start":"2010-01-01","total_volume":24720000,"tx_count":40},{"month_start":"2010-02-01","total_volume":32171316,"tx_count":49},{"month_start":"2010-03-01","total_volume":53886225,"tx_count":83},{"month_start":"2010-04-01","total_volume":54937995,"tx_count":73},{"month_start":"2010-05-01","total_volume":63478233,"tx_count":92},{"month_start":"2010-06-01","total_volume":61669772,"tx_count":89},{"month_start":"2010-07-01","total_volume":48259638,"tx_count":71},{"month_start":"2010-08-01","total_volume":46502861,"tx_count":64},{"month_start":"2010-09-01","total_volume":55524502,"tx_count":70},{"month_start":"2010-10-01","total_volume":41798658,"tx_count":56},{"month_start":"2010-11-01","total_volume":33291329,"tx_count":46},{"month_start":"2010-12-01","total_volume":47795032,"tx_count":72},{"month_start":"2011-01-01","total_volume":34666200,"tx_count":52},{"month_start":"2011-02-01","total_volume":38763095,"tx_count":57},{"month_start":"2011-03-01","total_volume":69530733,"tx_count":94},{"month_start":"2011-04-01","total_volume":70466400,"tx_count":92},{"month_start":"2011-05-01","total_volume":65456500,"tx_count":83},{"month_start":"2011-06-01","total_volume":47053605,"tx_count":72},{"month_start":"2011-07-01","total_volume":50436609,"tx_count":79},{"month_start":"2011-08-01","total_volume":53600619,"tx_count":71},{"month_start":"2011-09-01","total_volume":43798627,"tx_count":66},{"month_start":"2011-10-01","total_volume":44025135,"tx_count":59},{"month_start":"2011-11-01","total_volume":46168347,"tx_count":69},{"month_start":"2011-12-01","total_volume":69031966,"tx_count":67},{"month_start":"2012-01-01","total_volume":24764754,"tx_count":40},{"month_start":"2012-02-01","total_volume":35514367,"tx_count":55},{"month_start":"2012-03-01","total_volume":64810855,"tx_count":94},{"month_start":"2012-04-01","total_volume":68029357,"tx_count":91},{"month_start":"2012-05-01","total_volume":76501548,"tx_count":107},{"month_start":"2012-06-01","total_volume":87337519,"tx_count":113},{"month_start":"2012-07-01","total_volume":71505704,"tx_count":100},{"month_start":"2012-08-01","total_volume":98611806,"tx_count":116},{"month_start":"2012-09-01","total_volume":86251325,"tx_count":94},{"month_start":"2012-10-01","total_volume":75831443,"tx_count":92},{"month_start":"2012-11-01","total_volume":95335496,"tx_count":96},{"month_start":"2012-12-01","total_volume":77871434,"tx_count":84},{"month_start":"2013-01-01","total_volume":64001580,"tx_count":66},{"month_start":"2013-02-01","total_volume":60744921,"tx_count":65},{"month_start":"2013-03-01","total_volume":74230766,"tx_count":87},{"month_start":"2013-04-01","total_volume":89501373,"tx_count":95},{"month_start":"2013-05-01","total_volume":131991077,"tx_count":132},{"month_start":"2013-06-01","total_volume":89613577,"tx_count":101},{"month_start":"2013-07-01","total_volume":121008689,"tx_count":130},{"month_start":"2013-08-01","total_volume":105172936,"tx_count":116},{"month_start":"2013-09-01","total_volume":73006840,"tx_count":90},{"month_start":"2013-10-01","total_volume":114258186,"tx_count":113},{"month_start":"2013-11-01","total_volume":121211612,"tx_count":119},{"month_start":"2013-12-01","total_volume":87868270,"tx_count":92},{"month_start":"2014-01-01","total_volume":72868675,"tx_count":72},{"month_start":"2014-02-01","total_volume":97641528,"tx_count":98},{"month_start":"2014-03-01","total_volume":94414146,"tx_count":88},{"month_start":"2014-04-01","total_volume":127251406,"tx_count":122},{"month_start":"2014-05-01","total_volume":157269568,"tx_count":135},{"month_start":"2014-06-01","total_volume":118691469,"tx_count":106},{"month_start":"2014-07-01","total_volume":108756209,"tx_count":105},{"month_start":"2014-08-01","total_volume":134239236,"tx_count":123},{"month_start":"2014-09-01","total_volume":83457424,"tx_count":83},{"month_start":"2014-10-01","total_volume":121388501,"tx_count":122},{"month_start":"2014-11-01","total_volume":87319898,"tx_count":79},{"month_start":"2014-12-01","total_volume":84091917,"tx_count":82},{"month_start":"2015-01-01","total_volume":57899195,"tx_count":57},{"month_start":"2015-02-01","total_volume":73535979,"tx_count":62},{"month_start":"2015-03-01","total_volume":146915388,"tx_count":117},{"month_start":"2015-04-01","total_volume":142455423,"tx_count":117},{"month_start":"2015-05-01","total_volume":127870119,"tx_count":104},{"month_start":"2015-06-01","total_volume":148494329,"tx_count":115},{"month_start":"2015-07-01","total_volume":119740709,"tx_count":101},{"month_start":"2015-08-01","total_volume":87417028,"tx_count":75},{"month_start":"2015-09-01","total_volume":81036042,"tx_count":74},{"month_start":"2015-10-01","total_volume":105484600,"tx_count":87},{"month_start":"2015-11-01","total_volume":111013235,"tx_count":92},{"month_start":"2015-12-01","total_volume":134934878,"tx_count":110},{"month_start":"2016-01-01","total_volume":69650421,"tx_count":60},{"month_start":"2016-02-01","total_volume":86780891,"tx_count":74},{"month_start":"2016-03-01","total_volume":141932581,"tx_count":115},{"month_start":"2016-04-01","total_volume":138488301,"tx_count":98},{"month_start":"2016-05-01","total_volume":121633985,"tx_count":98},{"month_start":"2016-06-01","total_volume":105118683,"tx_count":91},{"month_start":"2016-07-01","total_volume":93182500,"tx_count":84},{"month_start":"2016-08-01","total_volume":105040033,"tx_count":89},{"month_start":"2016-09-01","total_volume":82518380,"tx_count":78},{"month_start":"2016-10-01","total_volume":99591002,"tx_count":79},{"month_start":"2016-11-01","total_volume":76108216,"tx_count":73},{"month_start":"2016-12-01","total_volume":96532192,"tx_count":78},{"month_start":"2017-01-01","total_volume":49304874,"tx_count":46},{"month_start":"2017-02-01","total_volume":82382161,"tx_count":63},{"month_start":"2017-03-01","total_volume":131043350,"tx_count":106},{"month_start":"2017-04-01","total_volume":105512822,"tx_count":90},{"month_start":"2017-05-01","total_volume":96517626,"tx_count":80},{"month_start":"2017-06-01","total_volume":118267320,"tx_count":98},{"month_start":"2017-07-01","total_volume":119302552,"tx_count":99},{"month_start":"2017-08-01","total_volume":106001430,"tx_count":86},{"month_start":"2017-09-01","total_volume":86520302,"tx_count":77},{"month_start":"2017-10-01","total_volume":150650044,"tx_count":121},{"month_start":"2017-11-01","total_volume":130000584,"tx_count":109},{"month_start":"2017-12-01","total_volume":124242463,"tx_count":105},{"month_start":"2018-01-01","total_volume":59278488,"tx_count":48},{"month_start":"2018-02-01","total_volume":105284129,"tx_count":91},{"month_start":"2018-03-01","total_volume":132939161,"tx_count":98},{"month_start":"2018-04-01","total_volume":144095819,"tx_count":118},{"month_start":"2018-05-01","total_volume":174300364,"tx_count":130},{"month_start":"2018-06-01","total_volume":147532472,"tx_count":114},{"month_start":"2018-07-01","total_volume":131557586,"tx_count":106},{"month_start":"2018-08-01","total_volume":153538305,"tx_count":107},{"month_start":"2018-09-01","total_volume":81244222,"tx_count":69},{"month_start":"2018-10-01","total_volume":156872934,"tx_count":115},{"month_start":"2018-11-01","total_volume":123866173,"tx_count":104},{"month_start":"2018-12-01","total_volume":86377874,"tx_count":66},{"month_start":"2019-01-01","total_volume":48732749,"tx_count":40},{"month_start":"2019-02-01","total_volume":95286600,"tx_count":71},{"month_start":"2019-03-01","total_volume":117156083,"tx_count":94},{"month_start":"2019-04-01","total_volume":179228769,"tx_count":129},{"month_start":"2019-05-01","total_volume":181335199,"tx_count":145},{"month_start":"2019-06-01","total_volume":129758535,"tx_count":98},{"month_start":"2019-07-01","total_volume":115342888,"tx_count":84},{"month_start":"2019-08-01","total_volume":99303794,"tx_count":80},{"month_start":"2019-09-01","total_volume":96655518,"tx_count":73},{"month_start":"2019-10-01","total_volume":125201115,"tx_count":94},{"month_start":"2019-11-01","total_volume":128156640,"tx_count":93},{"month_start":"2019-12-01","total_volume":90084712,"tx_count":74},{"month_start":"2020-01-01","total_volume":57790090,"tx_count":48},{"month_start":"2020-02-01","total_volume":78135534,"tx_count":62},{"month_start":"2020-03-01","total_volume":133557187,"tx_count":98},{"month_start":"2020-04-01","total_volume":50565657,"tx_count":42},{"month_start":"2020-05-01","total_volume":39006763,"tx_count":38},{"month_start":"2020-06-01","total_volume":76662623,"tx_count":60},{"month_start":"2020-07-01","total_volume":113676211,"tx_count":89},{"month_start":"2020-08-01","total_volume":99552705,"tx_count":77},{"month_start":"2020-09-01","total_volume":130501158,"tx_count":106},{"month_start":"2020-10-01","total_volume":99978584,"tx_count":81},{"month_start":"2020-11-01","total_volume":113136086,"tx_count":100},{"month_start":"2020-12-01","total_volume":182608415,"tx_count":137},{"month_start":"2021-01-01","total_volume":112191399,"tx_count":94},{"month_start":"2021-02-01","total_volume":107085252,"tx_count":84},{"month_start":"2021-03-01","total_volume":211723902,"tx_count":168},{"month_start":"2021-04-01","total_volume":187783938,"tx_count":158},{"month_start":"2021-05-01","total_volume":171301323,"tx_count":138},{"month_start":"2021-06-01","total_volume":218303118,"tx_count":169},{"month_start":"2021-07-01","total_volume":160703657,"tx_count":122},{"month_start":"2021-08-01","total_volume":160327954,"tx_count":126},{"month_start":"2021-09-01","total_volume":123893677,"tx_count":98},{"month_start":"2021-10-01","total_volume":143901205,"tx_count":112},{"month_start":"2021-11-01","total_volume":153779658,"tx_count":119},{"month_start":"2021-12-01","total_volume":141914555,"tx_count":104},{"month_start":"2022-01-01","total_volume":70754502,"tx_count":58},{"month_start":"2022-02-01","total_volume":111967352,"tx_count":86},{"month_start":"2022-03-01","total_volume":169838038,"tx_count":132},{"month_start":"2022-04-01","total_volume":157969544,"tx_count":116},{"month_start":"2022-05-01","total_volume":134668209,"tx_count":114},{"month_start":"2022-06-01","total_volume":121655873,"tx_count":94},{"month_start":"2022-07-01","total_volume":99224627,"tx_count":80},{"month_start":"2022-08-01","total_volume":80634116,"tx_count":72},{"month_start":"2022-09-01","total_volume":92213625,"tx_count":74},{"month_start":"2022-10-01","total_volume":83030411,"tx_count":68},{"month_start":"2022-11-01","total_volume":62721438,"tx_count":54},{"month_start":"2022-12-01","total_volume":46738609,"tx_count":46},{"month_start":"2023-01-01","total_volume":43318753,"tx_count":34},{"month_start":"2023-02-01","total_volume":49877385,"tx_count":43},{"month_start":"2023-03-01","total_volume":87259646,"tx_count":75},{"month_start":"2023-04-01","total_volume":88730324,"tx_count":67},{"month_start":"2023-05-01","total_volume":71571707,"tx_count":64},{"month_start":"2023-06-01","total_volume":82228496,"tx_count":62},{"month_start":"2023-07-01","total_volume":49770771,"tx_count":45},{"month_start":"2023-08-01","total_volume":63811528,"tx_count":56},{"month_start":"2023-09-01","total_volume":71044296,"tx_count":62},{"month_start":"2023-10-01","total_volume":58484500,"tx_count":51},{"month_start":"2023-11-01","total_volume":52007788,"tx_count":43},{"month_start":"2023-12-01","total_volume":62127247,"tx_count":58},{"month_start":"2024-01-01","total_volume":43420888,"tx_count":33},{"month_start":"2024-02-01","total_volume":85926799,"tx_count":61},{"month_start":"2024-03-01","total_volume":81329264,"tx_count":68},{"month_start":"2024-04-01","total_volume":99598588,"tx_count":82},{"month_start":"2024-05-01","total_volume":84455806,"tx_count":70},{"month_start":"2024-06-01","total_volume":53232970,"tx_count":51},{"month_start":"2024-07-01","total_volume":88390634,"tx_count":70},{"month_start":"2024-08-01","total_volume":70753687,"tx_count":66},{"month_start":"2024-09-01","total_volume":50661023,"tx_count":44},{"month_start":"2024-10-01","total_volume":87192276,"tx_count":61},{"month_start":"2024-11-01","total_volume":92937517,"tx_count":73},{"month_start":"2024-12-01","total_volume":72704886,"tx_count":50},{"month_start":"2025-01-01","total_volume":57100000,"tx_count":46},{"month_start":"2025-02-01","total_volume":88122190,"tx_count":69},{"month_start":"2025-03-01","total_volume":85311692,"tx_count":85},{"month_start":"2025-04-01","total_volume":86497145,"tx_count":70},{"month_start":"2025-05-01","total_volume":102247748,"tx_count":83},{"month_start":"2025-06-01","total_volume":75597319,"tx_count":62},{"month_start":"2025-07-01","total_volume":86318083,"tx_count":71},{"month_start":"2025-08-01","total_volume":92349400,"tx_count":78},{"month_start":"2025-09-01","total_volume":97317200,"tx_count":81},{"month_start":"2025-10-01","total_volume":105792699,"tx_count":83},{"month_start":"2025-11-01","total_volume":71149232,"tx_count":58},{"month_start":"2025-12-01","total_volume":72757587,"tx_count":65},{"month_start":"2026-01-01","total_volume":38328335,"tx_count":37},{"month_start":"2026-02-01","total_volume":57436031,"tx_count":49},{"month_start":"2026-03-01","total_volume":125054104,"tx_count":81},{"month_start":"2026-04-01","total_volume":99903525,"tx_count":73},{"month_start":"2026-05-01","total_volume":102537535,"tx_count":73}]},"\n      WITH ranked AS (\n        SELECT DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) AS month_start,\n               CAST(SalePrice AS FLOAT) AS price,\n               ROW_NUMBER() OVER (\n                 PARTITION BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)\n                 ORDER BY CAST(SalePrice AS FLOAT)\n               ) AS rn,\n               COUNT(*) OVER (\n                 PARTITION BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)\n               ) AS cnt\n        FROM   Tbl_Listings_MLS\n        WHERE  MLS_Source = 'SF'\n          AND  FK_Geo_District_Name = 'SF District 9'\n          AND  PropertyType IN ('CNDO','TWNH','COOP')\n          AND  SaleDate IS NOT NULL\n          AND  SalePrice > 0\n          AND  SalePrice < 50000000\n          AND  SaleDate >= DATEADD(year, -10, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))\n          AND  DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) < DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)\n      )\n      SELECT month_start,\n             AVG(price) AS median_price,\n             MAX(cnt)   AS tx_count\n      FROM   ranked\n      WHERE  rn IN ((cnt + 1) / 2, (cnt + 2) / 2)\n      GROUP  BY month_start\n      ORDER  BY month_start":{"results":[{"median_price":1120000,"month_start":"2016-06-01","tx_count":91},{"median_price":1002500,"month_start":"2016-07-01","tx_count":84},{"median_price":980000,"month_start":"2016-08-01","tx_count":89},{"median_price":991500.5,"month_start":"2016-09-01","tx_count":78},{"median_price":1114000,"month_start":"2016-10-01","tx_count":79},{"median_price":930000,"month_start":"2016-11-01","tx_count":73},{"median_price":1006000,"month_start":"2016-12-01","tx_count":78},{"median_price":889000,"month_start":"2017-01-01","tx_count":46},{"median_price":1108000,"month_start":"2017-02-01","tx_count":63},{"median_price":1090000,"month_start":"2017-03-01","tx_count":106},{"median_price":1050000,"month_start":"2017-04-01","tx_count":90},{"median_price":1145000,"month_start":"2017-05-01","tx_count":80},{"median_price":1130500,"month_start":"2017-06-01","tx_count":98},{"median_price":1100000,"month_start":"2017-07-01","tx_count":99},{"median_price":1177500,"month_start":"2017-08-01","tx_count":86},{"median_price":1065000,"month_start":"2017-09-01","tx_count":77},{"median_price":1140000,"month_start":"2017-10-01","tx_count":121},{"median_price":1160000,"month_start":"2017-11-01","tx_count":109},{"median_price":1059000,"month_start":"2017-12-01","tx_count":105},{"median_price":1135000,"month_start":"2018-01-01","tx_count":48},{"median_price":975000,"month_start":"2018-02-01","tx_count":91},{"median_price":1190000,"month_start":"2018-03-01","tx_count":98},{"median_price":1097000,"month_start":"2018-04-01","tx_count":118},{"median_price":1225000,"month_start":"2018-05-01","tx_count":130},{"median_price":1207500,"month_start":"2018-06-01","tx_count":114},{"median_price":1100000,"month_start":"2018-07-01","tx_count":106},{"median_price":1228800,"month_start":"2018-08-01","tx_count":107},{"median_price":1112500,"month_start":"2018-09-01","tx_count":69},{"median_price":1250000,"month_start":"2018-10-01","tx_count":115},{"median_price":1072500,"month_start":"2018-11-01","tx_count":104},{"median_price":1195400,"month_start":"2018-12-01","tx_count":66},{"median_price":982409,"month_start":"2019-01-01","tx_count":40},{"median_price":1080000,"month_start":"2019-02-01","tx_count":71},{"median_price":1195000,"month_start":"2019-03-01","tx_count":94},{"median_price":1257000,"month_start":"2019-04-01","tx_count":129},{"median_price":1203801,"month_start":"2019-05-01","tx_count":145},{"median_price":1212500,"month_start":"2019-06-01","tx_count":98},{"median_price":1267500,"month_start":"2019-07-01","tx_count":84},{"median_price":1111000,"month_start":"2019-08-01","tx_count":80},{"median_price":1300000,"month_start":"2019-09-01","tx_count":73},{"median_price":1199000,"month_start":"2019-10-01","tx_count":94},{"median_price":1260000,"month_start":"2019-11-01","tx_count":93},{"median_price":1130000,"month_start":"2019-12-01","tx_count":74},{"median_price":1145500,"month_start":"2020-01-01","tx_count":48},{"median_price":1233000,"month_start":"2020-02-01","tx_count":62},{"median_price":1250000,"month_start":"2020-03-01","tx_count":98},{"median_price":1125000,"month_start":"2020-04-01","tx_count":42},{"median_price":910000,"month_start":"2020-05-01","tx_count":38},{"median_price":1212500,"month_start":"2020-06-01","tx_count":60},{"median_price":1120000,"month_start":"2020-07-01","tx_count":89},{"median_price":1168000,"month_start":"2020-08-01","tx_count":77},{"median_price":1152500,"month_start":"2020-09-01","tx_count":106},{"median_price":1090000,"month_start":"2020-10-01","tx_count":81},{"median_price":1009500,"month_start":"2020-11-01","tx_count":100},{"median_price":1070000,"month_start":"2020-12-01","tx_count":137},{"median_price":997000,"month_start":"2021-01-01","tx_count":94},{"median_price":1085000,"month_start":"2021-02-01","tx_count":84},{"median_price":1178750,"month_start":"2021-03-01","tx_count":168},{"median_price":1116500,"month_start":"2021-04-01","tx_count":158},{"median_price":1112500,"month_start":"2021-05-01","tx_count":138},{"median_price":1146000,"month_start":"2021-06-01","tx_count":169},{"median_price":1125000,"month_start":"2021-07-01","tx_count":122},{"median_price":1095000,"month_start":"2021-08-01","tx_count":126},{"median_price":1105000,"month_start":"2021-09-01","tx_count":98},{"median_price":1195000,"month_start":"2021-10-01","tx_count":112},{"median_price":1200000,"month_start":"2021-11-01","tx_count":119},{"median_price":1180000,"month_start":"2021-12-01","tx_count":104},{"median_price":1041671.5,"month_start":"2022-01-01","tx_count":58},{"median_price":1186500,"month_start":"2022-02-01","tx_count":86},{"median_price":1150000,"month_start":"2022-03-01","tx_count":132},{"median_price":1238750,"month_start":"2022-04-01","tx_count":116},{"median_price":1097500,"month_start":"2022-05-01","tx_count":114},{"median_price":1186500,"month_start":"2022-06-01","tx_count":94},{"median_price":1177500,"month_start":"2022-07-01","tx_count":80},{"median_price":1027500,"month_start":"2022-08-01","tx_count":72},{"median_price":1125000,"month_start":"2022-09-01","tx_count":74},{"median_price":1083125,"month_start":"2022-10-01","tx_count":68},{"median_price":1035000,"month_start":"2022-11-01","tx_count":54},{"median_price":905000,"month_start":"2022-12-01","tx_count":46},{"median_price":965000,"month_start":"2023-01-01","tx_count":34},{"median_price":1025000,"month_start":"2023-02-01","tx_count":43},{"median_price":1000000,"month_start":"2023-03-01","tx_count":75},{"median_price":1070000,"month_start":"2023-04-01","tx_count":67},{"median_price":940000,"month_start":"2023-05-01","tx_count":64},{"median_price":1209137,"month_start":"2023-06-01","tx_count":62},{"median_price":950000,"month_start":"2023-07-01","tx_count":45},{"median_price":912500,"month_start":"2023-08-01","tx_count":56},{"median_price":940000,"month_start":"2023-09-01","tx_count":62},{"median_price":1055000,"month_start":"2023-10-01","tx_count":51},{"median_price":1125000,"month_start":"2023-11-01","tx_count":43},{"median_price":1002500,"month_start":"2023-12-01","tx_count":58},{"median_price":1100000,"month_start":"2024-01-01","tx_count":33},{"median_price":1250000,"month_start":"2024-02-01","tx_count":61},{"median_price":1027500,"month_start":"2024-03-01","tx_count":68},{"median_price":1000000,"month_start":"2024-04-01","tx_count":82},{"median_price":1080000,"month_start":"2024-05-01","tx_count":70},{"median_price":825000,"month_start":"2024-06-01","tx_count":51},{"median_price":1177500,"month_start":"2024-07-01","tx_count":70},{"median_price":1012500,"month_start":"2024-08-01","tx_count":66},{"median_price":1024000,"month_start":"2024-09-01","tx_count":44},{"median_price":1100000,"month_start":"2024-10-01","tx_count":61},{"median_price":1042000,"month_start":"2024-11-01","tx_count":73},{"median_price":1055000,"month_start":"2024-12-01","tx_count":50},{"median_price":839750,"month_start":"2025-01-01","tx_count":46},{"median_price":940000,"month_start":"2025-02-01","tx_count":69},{"median_price":829000,"month_start":"2025-03-01","tx_count":85},{"median_price":1033750,"month_start":"2025-04-01","tx_count":70},{"median_price":1200000,"month_start":"2025-05-01","tx_count":83},{"median_price":1072000,"month_start":"2025-06-01","tx_count":62},{"median_price":960000,"month_start":"2025-07-01","tx_count":71},{"median_price":957500,"month_start":"2025-08-01","tx_count":78},{"median_price":950000,"month_start":"2025-09-01","tx_count":81},{"median_price":1081000,"month_start":"2025-10-01","tx_count":83},{"median_price":906250,"month_start":"2025-11-01","tx_count":58},{"median_price":979000,"month_start":"2025-12-01","tx_count":65},{"median_price":875000,"month_start":"2026-01-01","tx_count":37},{"median_price":1025000,"month_start":"2026-02-01","tx_count":49},{"median_price":1200000,"month_start":"2026-03-01","tx_count":81},{"median_price":1299000,"month_start":"2026-04-01","tx_count":73},{"median_price":1100000,"month_start":"2026-05-01","tx_count":73}]},"\n      SELECT DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) AS month_start,\n             AVG((CAST(SalePrice AS FLOAT) - CAST(ListPrice AS FLOAT))\n                  / NULLIF(CAST(ListPrice AS FLOAT), 0)) * 100 AS spread_pct,\n             COUNT(*) AS tx_count\n      FROM   Tbl_Listings_MLS\n      WHERE  MLS_Source = 'SF'\n        AND  FK_Geo_District_Name = 'SF District 9'\n        AND  PropertyType IN ('CNDO','TWNH','COOP')\n        AND  SaleDate IS NOT NULL\n        AND  SalePrice > 0\n        AND  SalePrice < 50000000\n        AND  ListPrice >= 50000\n        AND  ABS((CAST(SalePrice AS FLOAT) - CAST(ListPrice AS FLOAT))\n                 / CAST(ListPrice AS FLOAT)) <= 0.30\n        AND  SaleDate >= DATEADD(year, -10, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))\n        AND  DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) < DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)\n      GROUP  BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)\n      ORDER  BY month_start":{"results":[{"month_start":"2016-06-01","spread_pct":3.144580704279787,"tx_count":91},{"month_start":"2016-07-01","spread_pct":2.1749917669993235,"tx_count":83},{"month_start":"2016-08-01","spread_pct":1.0930858296047796,"tx_count":89},{"month_start":"2016-09-01","spread_pct":3.32065337796025,"tx_count":78},{"month_start":"2016-10-01","spread_pct":2.541069629020196,"tx_count":78},{"month_start":"2016-11-01","spread_pct":4.32611944764113,"tx_count":73},{"month_start":"2016-12-01","spread_pct":0.6295834301926841,"tx_count":78},{"month_start":"2017-01-01","spread_pct":0.51460852960357,"tx_count":46},{"month_start":"2017-02-01","spread_pct":3.0068183054375477,"tx_count":63},{"month_start":"2017-03-01","spread_pct":2.709980260874525,"tx_count":105},{"month_start":"2017-04-01","spread_pct":2.3369555626627214,"tx_count":87},{"month_start":"2017-05-01","spread_pct":2.137449531473568,"tx_count":79},{"month_start":"2017-06-01","spread_pct":3.1937252021583,"tx_count":95},{"month_start":"2017-07-01","spread_pct":3.343983180228586,"tx_count":97},{"month_start":"2017-08-01","spread_pct":2.2893883947748814,"tx_count":85},{"month_start":"2017-09-01","spread_pct":3.211823074256622,"tx_count":77},{"month_start":"2017-10-01","spread_pct":3.3865058865758066,"tx_count":120},{"month_start":"2017-11-01","spread_pct":3.0153827775287607,"tx_count":109},{"month_start":"2017-12-01","spread_pct":1.9846507789046557,"tx_count":104},{"month_start":"2018-01-01","spread_pct":0.0045000840456928745,"tx_count":48},{"month_start":"2018-02-01","spread_pct":3.5979948457330915,"tx_count":91},{"month_start":"2018-03-01","spread_pct":4.518405251835967,"tx_count":96},{"month_start":"2018-04-01","spread_pct":3.6960747885941196,"tx_count":115},{"month_start":"2018-05-01","spread_pct":3.8201155929155286,"tx_count":128},{"month_start":"2018-06-01","spread_pct":5.773748511875909,"tx_count":112},{"month_start":"2018-07-01","spread_pct":3.2326740523781456,"tx_count":103},{"month_start":"2018-08-01","spread_pct":2.0558508548955774,"tx_count":100},{"month_start":"2018-09-01","spread_pct":4.429188259766677,"tx_count":68},{"month_start":"2018-10-01","spread_pct":5.028690788450118,"tx_count":113},{"month_start":"2018-11-01","spread_pct":1.983241531907416,"tx_count":103},{"month_start":"2018-12-01","spread_pct":0.009499518790204185,"tx_count":65},{"month_start":"2019-01-01","spread_pct":-0.6266650919338711,"tx_count":39},{"month_start":"2019-02-01","spread_pct":2.7988832356800124,"tx_count":70},{"month_start":"2019-03-01","spread_pct":2.3939481635757134,"tx_count":92},{"month_start":"2019-04-01","spread_pct":3.070117017646675,"tx_count":126},{"month_start":"2019-05-01","spread_pct":3.9251613332680924,"tx_count":141},{"month_start":"2019-06-01","spread_pct":4.8374208063405,"tx_count":95},{"month_start":"2019-07-01","spread_pct":3.8675573912000285,"tx_count":81},{"month_start":"2019-08-01","spread_pct":3.5021534238272403,"tx_count":77},{"month_start":"2019-09-01","spread_pct":1.364880089963687,"tx_count":71},{"month_start":"2019-10-01","spread_pct":2.5846446081577983,"tx_count":93},{"month_start":"2019-11-01","spread_pct":4.251314268284418,"tx_count":92},{"month_start":"2019-12-01","spread_pct":0.3735536495905344,"tx_count":73},{"month_start":"2020-01-01","spread_pct":-0.15479396834078604,"tx_count":48},{"month_start":"2020-02-01","spread_pct":4.222817150993931,"tx_count":62},{"month_start":"2020-03-01","spread_pct":3.1909715703114285,"tx_count":98},{"month_start":"2020-04-01","spread_pct":2.8514425017534633,"tx_count":42},{"month_start":"2020-05-01","spread_pct":-0.5834322576905661,"tx_count":38},{"month_start":"2020-06-01","spread_pct":0.026678237075807357,"tx_count":60},{"month_start":"2020-07-01","spread_pct":-0.6652108808703175,"tx_count":89},{"month_start":"2020-08-01","spread_pct":-0.9866755118895417,"tx_count":76},{"month_start":"2020-09-01","spread_pct":-1.0948206246837806,"tx_count":106},{"month_start":"2020-10-01","spread_pct":-0.8413670998318584,"tx_count":81},{"month_start":"2020-11-01","spread_pct":-1.3359657069121749,"tx_count":100},{"month_start":"2020-12-01","spread_pct":-0.9578917175208529,"tx_count":135},{"month_start":"2021-01-01","spread_pct":-1.5228865387885895,"tx_count":94},{"month_start":"2021-02-01","spread_pct":-0.4887874091287048,"tx_count":83},{"month_start":"2021-03-01","spread_pct":0.29639334126632727,"tx_count":166},{"month_start":"2021-04-01","spread_pct":0.8045817219571547,"tx_count":156},{"month_start":"2021-05-01","spread_pct":2.3060696136110543,"tx_count":135},{"month_start":"2021-06-01","spread_pct":2.3698529624889053,"tx_count":166},{"month_start":"2021-07-01","spread_pct":0.8031938281000495,"tx_count":121},{"month_start":"2021-08-01","spread_pct":2.6443163419848243,"tx_count":123},{"month_start":"2021-09-01","spread_pct":2.1568237228856093,"tx_count":97},{"month_start":"2021-10-01","spread_pct":4.74005878006093,"tx_count":111},{"month_start":"2021-11-01","spread_pct":2.8314353691995784,"tx_count":118},{"month_start":"2021-12-01","spread_pct":1.6124414269573986,"tx_count":104},{"month_start":"2022-01-01","spread_pct":-0.5866617442387846,"tx_count":58},{"month_start":"2022-02-01","spread_pct":2.576684035765062,"tx_count":85},{"month_start":"2022-03-01","spread_pct":1.8491590983807038,"tx_count":129},{"month_start":"2022-04-01","spread_pct":3.9969031436725024,"tx_count":114},{"month_start":"2022-05-01","spread_pct":2.330114357927378,"tx_count":114},{"month_start":"2022-06-01","spread_pct":2.016544931892649,"tx_count":91},{"month_start":"2022-07-01","spread_pct":0.2879495086547256,"tx_count":80},{"month_start":"2022-08-01","spread_pct":-0.39224518434909866,"tx_count":72},{"month_start":"2022-09-01","spread_pct":-1.2771858131278366,"tx_count":72},{"month_start":"2022-10-01","spread_pct":-0.5258885647786237,"tx_count":68},{"month_start":"2022-11-01","spread_pct":-1.5311392496966705,"tx_count":54},{"month_start":"2022-12-01","spread_pct":-2.130490777498164,"tx_count":46},{"month_start":"2023-01-01","spread_pct":-3.618591880869873,"tx_count":34},{"month_start":"2023-02-01","spread_pct":-3.322771436525857,"tx_count":43},{"month_start":"2023-03-01","spread_pct":-0.7403198647008553,"tx_count":75},{"month_start":"2023-04-01","spread_pct":-1.6824224409334183,"tx_count":67},{"month_start":"2023-05-01","spread_pct":-1.3442882835144305,"tx_count":64},{"month_start":"2023-06-01","spread_pct":-1.6281831211902975,"tx_count":62},{"month_start":"2023-07-01","spread_pct":-0.7710223939396749,"tx_count":45},{"month_start":"2023-08-01","spread_pct":-2.121449484381716,"tx_count":56},{"month_start":"2023-09-01","spread_pct":-1.11722621265496,"tx_count":61},{"month_start":"2023-10-01","spread_pct":-2.052308217673524,"tx_count":50},{"month_start":"2023-11-01","spread_pct":-1.5507998335645048,"tx_count":43},{"month_start":"2023-12-01","spread_pct":-2.766856809473118,"tx_count":57},{"month_start":"2024-01-01","spread_pct":-3.9714190207230833,"tx_count":33},{"month_start":"2024-02-01","spread_pct":0.5274771710407805,"tx_count":60},{"month_start":"2024-03-01","spread_pct":-0.6150089919526714,"tx_count":67},{"month_start":"2024-04-01","spread_pct":0.3976584153868212,"tx_count":82},{"month_start":"2024-05-01","spread_pct":0.5305078140851525,"tx_count":69},{"month_start":"2024-06-01","spread_pct":-0.1871405128390602,"tx_count":51},{"month_start":"2024-07-01","spread_pct":-1.4199914147873571,"tx_count":70},{"month_start":"2024-08-01","spread_pct":-0.764967203702843,"tx_count":66},{"month_start":"2024-09-01","spread_pct":-0.12667729816954626,"tx_count":44},{"month_start":"2024-10-01","spread_pct":-0.48763751801667576,"tx_count":61},{"month_start":"2024-11-01","spread_pct":-0.9985214693761241,"tx_count":72},{"month_start":"2024-12-01","spread_pct":-2.4557586033801786,"tx_count":50},{"month_start":"2025-01-01","spread_pct":-1.6762118087114364,"tx_count":46},{"month_start":"2025-02-01","spread_pct":-0.3915231767001927,"tx_count":68},{"month_start":"2025-03-01","spread_pct":-0.1468985843793961,"tx_count":84},{"month_start":"2025-04-01","spread_pct":-1.0773016580952768,"tx_count":70},{"month_start":"2025-05-01","spread_pct":0.7614678726540033,"tx_count":83},{"month_start":"2025-06-01","spread_pct":-0.07988616741061072,"tx_count":62},{"month_start":"2025-07-01","spread_pct":-0.8918630220725849,"tx_count":71},{"month_start":"2025-08-01","spread_pct":-1.9318482703809876,"tx_count":78},{"month_start":"2025-09-01","spread_pct":-1.0432386736751562,"tx_count":78},{"month_start":"2025-10-01","spread_pct":0.0719927532151801,"tx_count":82},{"month_start":"2025-11-01","spread_pct":0.028956886197653756,"tx_count":58},{"month_start":"2025-12-01","spread_pct":-0.13691743903728668,"tx_count":64},{"month_start":"2026-01-01","spread_pct":-1.4577581272851512,"tx_count":37},{"month_start":"2026-02-01","spread_pct":-0.16906945936660941,"tx_count":49},{"month_start":"2026-03-01","spread_pct":2.12361802545181,"tx_count":79},{"month_start":"2026-04-01","spread_pct":3.0881287310654293,"tx_count":71},{"month_start":"2026-05-01","spread_pct":0.26524080422182605,"tx_count":72}]},"\n      SELECT (CAST(FLOOR(SalePrice / 100000.0) AS INT) * 100000) AS bucket_start,\n             COUNT(*) AS sale_count\n      FROM   Tbl_Listings_MLS\n      WHERE  MLS_Source = 'SF'\n        AND  FK_Geo_District_Name = 'SF District 9'\n        AND  PropertyType IN ('CNDO','TWNH','COOP')\n        AND  SaleDate IS NOT NULL\n        AND  SalePrice > 0\n        AND  SalePrice < 50000000\n        AND  YEAR(SaleDate)  = YEAR(DATEADD(month, -1, GETDATE()))\n        AND  MONTH(SaleDate) = MONTH(DATEADD(month, -1, GETDATE()))\n      GROUP  BY (CAST(FLOOR(SalePrice / 100000.0) AS INT) * 100000)\n      ORDER  BY bucket_start":{"results":[{"bucket_start":0,"sale_count":1},{"bucket_start":300000,"sale_count":1},{"bucket_start":400000,"sale_count":2},{"bucket_start":500000,"sale_count":3},{"bucket_start":600000,"sale_count":5},{"bucket_start":700000,"sale_count":4},{"bucket_start":800000,"sale_count":8},{"bucket_start":900000,"sale_count":7},{"bucket_start":1000000,"sale_count":4},{"bucket_start":1100000,"sale_count":4},{"bucket_start":1200000,"sale_count":4},{"bucket_start":1300000,"sale_count":1},{"bucket_start":1400000,"sale_count":2},{"bucket_start":1500000,"sale_count":3},{"bucket_start":1600000,"sale_count":3},{"bucket_start":1700000,"sale_count":6},{"bucket_start":1800000,"sale_count":4},{"bucket_start":1900000,"sale_count":3},{"bucket_start":2100000,"sale_count":3},{"bucket_start":2200000,"sale_count":1},{"bucket_start":2600000,"sale_count":1},{"bucket_start":2800000,"sale_count":1},{"bucket_start":4700000,"sale_count":1},{"bucket_start":9800000,"sale_count":1}]},"\n      WITH ranked AS (\n        SELECT DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) AS month_start,\n               CAST(SalePrice AS FLOAT) / NULLIF(CAST(LivingArea AS FLOAT), 0) AS ppsf,\n               ROW_NUMBER() OVER (\n                 PARTITION BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)\n                 ORDER BY CAST(SalePrice AS FLOAT) / NULLIF(CAST(LivingArea AS FLOAT), 0)\n               ) AS rn,\n               COUNT(*) OVER (\n                 PARTITION BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)\n               ) AS cnt\n        FROM   Tbl_Listings_MLS\n        WHERE  MLS_Source = 'SF'\n          AND  FK_Geo_District_Name = 'SF District 9'\n          AND  PropertyType IN ('CNDO','TWNH','COOP')\n          AND  SaleDate IS NOT NULL\n          AND  SalePrice > 0\n          AND  SalePrice < 50000000\n          AND  LivingArea > 0\n          AND  SaleDate >= DATEADD(year, -10, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))\n          AND  DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) < DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)\n      )\n      SELECT month_start,\n             AVG(ppsf) AS median_ppsf,\n             MAX(cnt)  AS tx_count\n      FROM   ranked\n      WHERE  rn IN ((cnt + 1) / 2, (cnt + 2) / 2)\n      GROUP  BY month_start\n      ORDER  BY month_start":{"results":[{"median_ppsf":1036.3938355742916,"month_start":"2016-06-01","tx_count":84},{"median_ppsf":1036.4381134940422,"month_start":"2016-07-01","tx_count":68},{"median_ppsf":1040.3225806451612,"month_start":"2016-08-01","tx_count":75},{"median_ppsf":1004.5317220543807,"month_start":"2016-09-01","tx_count":67},{"median_ppsf":1026.7194100607842,"month_start":"2016-10-01","tx_count":66},{"median_ppsf":956.8687254696961,"month_start":"2016-11-01","tx_count":62},{"median_ppsf":987.5872769588829,"month_start":"2016-12-01","tx_count":69},{"median_ppsf":1008.0645161290323,"month_start":"2017-01-01","tx_count":39},{"median_ppsf":1033.6105707961633,"month_start":"2017-02-01","tx_count":54},{"median_ppsf":997.1665572793218,"month_start":"2017-03-01","tx_count":92},{"median_ppsf":1063.4003787569145,"month_start":"2017-04-01","tx_count":78},{"median_ppsf":1073.4314980793854,"month_start":"2017-05-01","tx_count":68},{"median_ppsf":1044.932079414838,"month_start":"2017-06-01","tx_count":87},{"median_ppsf":1075.1359367276323,"month_start":"2017-07-01","tx_count":85},{"median_ppsf":1104.1633129563593,"month_start":"2017-08-01","tx_count":76},{"median_ppsf":1121.175726472316,"month_start":"2017-09-01","tx_count":72},{"median_ppsf":1033.7737159886099,"month_start":"2017-10-01","tx_count":100},{"median_ppsf":1074.0236148955496,"month_start":"2017-11-01","tx_count":101},{"median_ppsf":1027.992277992278,"month_start":"2017-12-01","tx_count":91},{"median_ppsf":1100.2747252747254,"month_start":"2018-01-01","tx_count":43},{"median_ppsf":1083.1924682223487,"month_start":"2018-02-01","tx_count":82},{"median_ppsf":1168.7565271387846,"month_start":"2018-03-01","tx_count":90},{"median_ppsf":1143.6170212765958,"month_start":"2018-04-01","tx_count":109},{"median_ppsf":1144.502345183323,"month_start":"2018-05-01","tx_count":116},{"median_ppsf":1134.5104857327226,"month_start":"2018-06-01","tx_count":110},{"median_ppsf":1174.2424242424242,"month_start":"2018-07-01","tx_count":95},{"median_ppsf":1179.3103448275863,"month_start":"2018-08-01","tx_count":99},{"median_ppsf":1198.1132075471698,"month_start":"2018-09-01","tx_count":67},{"median_ppsf":1173.6526946107786,"month_start":"2018-10-01","tx_count":97},{"median_ppsf":1069.2810457516339,"month_start":"2018-11-01","tx_count":93},{"median_ppsf":1094.5623287452854,"month_start":"2018-12-01","tx_count":64},{"median_ppsf":1047.5578406169666,"month_start":"2019-01-01","tx_count":39},{"median_ppsf":1159.0727418065549,"month_start":"2019-02-01","tx_count":65},{"median_ppsf":1119.2723487805456,"month_start":"2019-03-01","tx_count":86},{"median_ppsf":1191.6583912611718,"month_start":"2019-04-01","tx_count":113},{"median_ppsf":1204.8192771084337,"month_start":"2019-05-01","tx_count":129},{"median_ppsf":1199.9223186542376,"month_start":"2019-06-01","tx_count":94},{"median_ppsf":1230.8598351001178,"month_start":"2019-07-01","tx_count":77},{"median_ppsf":1179.797950179991,"month_start":"2019-08-01","tx_count":78},{"median_ppsf":1168.918918918919,"month_start":"2019-09-01","tx_count":63},{"median_ppsf":1160.7541009714923,"month_start":"2019-10-01","tx_count":86},{"median_ppsf":1086.6637017952808,"month_start":"2019-11-01","tx_count":88},{"median_ppsf":1093.3806146572103,"month_start":"2019-12-01","tx_count":69},{"median_ppsf":1081.7610062893082,"month_start":"2020-01-01","tx_count":41},{"median_ppsf":1154.7552942906755,"month_start":"2020-02-01","tx_count":58},{"median_ppsf":1195.4022988505747,"month_start":"2020-03-01","tx_count":87},{"median_ppsf":1122.3021582733813,"month_start":"2020-04-01","tx_count":39},{"median_ppsf":1051.7769673952916,"month_start":"2020-05-01","tx_count":36},{"median_ppsf":1112.5265392781316,"month_start":"2020-06-01","tx_count":57},{"median_ppsf":1195.7142857142858,"month_start":"2020-07-01","tx_count":77},{"median_ppsf":1096.096096096096,"month_start":"2020-08-01","tx_count":68},{"median_ppsf":1054.597840354143,"month_start":"2020-09-01","tx_count":94},{"median_ppsf":979.020979020979,"month_start":"2020-10-01","tx_count":73},{"median_ppsf":990.5254091300603,"month_start":"2020-11-01","tx_count":91},{"median_ppsf":971.4285714285714,"month_start":"2020-12-01","tx_count":125},{"median_ppsf":1045.8885215636606,"month_start":"2021-01-01","tx_count":86},{"median_ppsf":1068.1818181818182,"month_start":"2021-02-01","tx_count":81},{"median_ppsf":1071.0259301014655,"month_start":"2021-03-01","tx_count":155},{"median_ppsf":1040.041536863967,"month_start":"2021-04-01","tx_count":144},{"median_ppsf":1086.9565217391305,"month_start":"2021-05-01","tx_count":125},{"median_ppsf":1094.4880425484434,"month_start":"2021-06-01","tx_count":158},{"median_ppsf":1116.2997776149818,"month_start":"2021-07-01","tx_count":114},{"median_ppsf":1121.5235792019348,"month_start":"2021-08-01","tx_count":115},{"median_ppsf":1080.4361326630294,"month_start":"2021-09-01","tx_count":88},{"median_ppsf":1116.504854368932,"month_start":"2021-10-01","tx_count":105},{"median_ppsf":1048.5993102758896,"month_start":"2021-11-01","tx_count":110},{"median_ppsf":1101.5014215809529,"month_start":"2021-12-01","tx_count":98},{"median_ppsf":1084.2880523731587,"month_start":"2022-01-01","tx_count":55},{"median_ppsf":1114.5422362053355,"month_start":"2022-02-01","tx_count":80},{"median_ppsf":1089.1763104152485,"month_start":"2022-03-01","tx_count":127},{"median_ppsf":1099.6204933586337,"month_start":"2022-04-01","tx_count":111},{"median_ppsf":1102.6458936444767,"month_start":"2022-05-01","tx_count":104},{"median_ppsf":1090.7616001483334,"month_start":"2022-06-01","tx_count":88},{"median_ppsf":1071.1743105515588,"month_start":"2022-07-01","tx_count":68},{"median_ppsf":1083.123586116942,"month_start":"2022-08-01","tx_count":68},{"median_ppsf":1026.9922879177377,"month_start":"2022-09-01","tx_count":69},{"median_ppsf":979.4370787142777,"month_start":"2022-10-01","tx_count":64},{"median_ppsf":953.3228800559234,"month_start":"2022-11-01","tx_count":50},{"median_ppsf":900.974025974026,"month_start":"2022-12-01","tx_count":45},{"median_ppsf":870.3374777975133,"month_start":"2023-01-01","tx_count":33},{"median_ppsf":1013.8248847926267,"month_start":"2023-02-01","tx_count":43},{"median_ppsf":995.6751516520544,"month_start":"2023-03-01","tx_count":70},{"median_ppsf":1004.3668122270742,"month_start":"2023-04-01","tx_count":63},{"median_ppsf":968.8885858310352,"month_start":"2023-05-01","tx_count":60},{"median_ppsf":1019.6851048265085,"month_start":"2023-06-01","tx_count":56},{"median_ppsf":983.6065573770492,"month_start":"2023-07-01","tx_count":43},{"median_ppsf":995.4316694386246,"month_start":"2023-08-01","tx_count":52},{"median_ppsf":1002.1259979173898,"month_start":"2023-09-01","tx_count":56},{"median_ppsf":995.7325746799431,"month_start":"2023-10-01","tx_count":47},{"median_ppsf":921.5187865101025,"month_start":"2023-11-01","tx_count":40},{"median_ppsf":850.6493506493506,"month_start":"2023-12-01","tx_count":57},{"median_ppsf":983.0205540661304,"month_start":"2024-01-01","tx_count":31},{"median_ppsf":1018.6389250108366,"month_start":"2024-02-01","tx_count":57},{"median_ppsf":957.3748308525034,"month_start":"2024-03-01","tx_count":61},{"median_ppsf":995.850622406639,"month_start":"2024-04-01","tx_count":79},{"median_ppsf":997.1644766503887,"month_start":"2024-05-01","tx_count":62},{"median_ppsf":888.8888888888889,"month_start":"2024-06-01","tx_count":49},{"median_ppsf":982.2645907551569,"month_start":"2024-07-01","tx_count":70},{"median_ppsf":978.6286731967944,"month_start":"2024-08-01","tx_count":63},{"median_ppsf":968.5308514619173,"month_start":"2024-09-01","tx_count":42},{"median_ppsf":1004.18410041841,"month_start":"2024-10-01","tx_count":57},{"median_ppsf":932.2535388109159,"month_start":"2024-11-01","tx_count":70},{"median_ppsf":1006.9927536231885,"month_start":"2024-12-01","tx_count":48},{"median_ppsf":907.7759743919207,"month_start":"2025-01-01","tx_count":46},{"median_ppsf":871.2392287211901,"month_start":"2025-02-01","tx_count":66},{"median_ppsf":874.9694680337414,"month_start":"2025-03-01","tx_count":82},{"median_ppsf":934.9154453213077,"month_start":"2025-04-01","tx_count":63},{"median_ppsf":984.2519685039371,"month_start":"2025-05-01","tx_count":81},{"median_ppsf":938.1898454746137,"month_start":"2025-06-01","tx_count":59},{"median_ppsf":893.2290474009617,"month_start":"2025-07-01","tx_count":64},{"median_ppsf":911.3504556752279,"month_start":"2025-08-01","tx_count":73},{"median_ppsf":994.341946277535,"month_start":"2025-09-01","tx_count":72},{"median_ppsf":1020.8957085828343,"month_start":"2025-10-01","tx_count":80},{"median_ppsf":982.4350086655113,"month_start":"2025-11-01","tx_count":56},{"median_ppsf":887.9459699465446,"month_start":"2025-12-01","tx_count":54},{"median_ppsf":868.6378118373557,"month_start":"2026-01-01","tx_count":36},{"median_ppsf":998.9397988773228,"month_start":"2026-02-01","tx_count":46},{"median_ppsf":1047.5560729234253,"month_start":"2026-03-01","tx_count":78},{"median_ppsf":1071.4506554538707,"month_start":"2026-04-01","tx_count":72},{"median_ppsf":1043.701799485861,"month_start":"2026-05-01","tx_count":71}]},"\n      SELECT DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) AS month_start,\n             AVG(CAST(DaysOnMarket AS FLOAT)) AS avg_dom,\n             COUNT(*) AS tx_count\n      FROM   Tbl_Listings_MLS\n      WHERE  MLS_Source = 'SF'\n        AND  FK_Geo_District_Name = 'SF District 9'\n        AND  PropertyType IN ('CNDO','TWNH','COOP')\n        AND  SaleDate IS NOT NULL\n        AND  DaysOnMarket IS NOT NULL\n        AND  DaysOnMarket >= 0\n        AND  DaysOnMarket < 1825\n        AND  SaleDate >= DATEADD(year, -10, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))\n        AND  DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) < DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)\n      GROUP  BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)\n      ORDER  BY month_start":{"results":[{"avg_dom":35.07692307692308,"month_start":"2016-06-01","tx_count":91},{"avg_dom":45.273809523809526,"month_start":"2016-07-01","tx_count":84},{"avg_dom":54.61797752808989,"month_start":"2016-08-01","tx_count":89},{"avg_dom":44.07692307692308,"month_start":"2016-09-01","tx_count":78},{"avg_dom":43.50632911392405,"month_start":"2016-10-01","tx_count":79},{"avg_dom":45.52054794520548,"month_start":"2016-11-01","tx_count":73},{"avg_dom":53.67948717948718,"month_start":"2016-12-01","tx_count":78},{"avg_dom":58.93478260869565,"month_start":"2017-01-01","tx_count":46},{"avg_dom":39.714285714285715,"month_start":"2017-02-01","tx_count":63},{"avg_dom":40.62264150943396,"month_start":"2017-03-01","tx_count":106},{"avg_dom":40.08888888888889,"month_start":"2017-04-01","tx_count":90},{"avg_dom":37.625,"month_start":"2017-05-01","tx_count":80},{"avg_dom":44.91836734693877,"month_start":"2017-06-01","tx_count":98},{"avg_dom":37.4040404040404,"month_start":"2017-07-01","tx_count":99},{"avg_dom":41.674418604651166,"month_start":"2017-08-01","tx_count":86},{"avg_dom":37.16883116883117,"month_start":"2017-09-01","tx_count":77},{"avg_dom":37.21487603305785,"month_start":"2017-10-01","tx_count":121},{"avg_dom":36.41284403669725,"month_start":"2017-11-01","tx_count":109},{"avg_dom":46.2,"month_start":"2017-12-01","tx_count":105},{"avg_dom":51.0625,"month_start":"2018-01-01","tx_count":48},{"avg_dom":34.92307692307692,"month_start":"2018-02-01","tx_count":91},{"avg_dom":27.346938775510203,"month_start":"2018-03-01","tx_count":98},{"avg_dom":30.923728813559322,"month_start":"2018-04-01","tx_count":118},{"avg_dom":31,"month_start":"2018-05-01","tx_count":130},{"avg_dom":24.55263157894737,"month_start":"2018-06-01","tx_count":114},{"avg_dom":31.339622641509433,"month_start":"2018-07-01","tx_count":106},{"avg_dom":39.018691588785046,"month_start":"2018-08-01","tx_count":107},{"avg_dom":32.11594202898551,"month_start":"2018-09-01","tx_count":69},{"avg_dom":30.669565217391305,"month_start":"2018-10-01","tx_count":115},{"avg_dom":35.32692307692308,"month_start":"2018-11-01","tx_count":104},{"avg_dom":55.484848484848484,"month_start":"2018-12-01","tx_count":66},{"avg_dom":45.775,"month_start":"2019-01-01","tx_count":40},{"avg_dom":42.521126760563384,"month_start":"2019-02-01","tx_count":71},{"avg_dom":33.3936170212766,"month_start":"2019-03-01","tx_count":94},{"avg_dom":37.86821705426357,"month_start":"2019-04-01","tx_count":129},{"avg_dom":28.813793103448276,"month_start":"2019-05-01","tx_count":145},{"avg_dom":28.122448979591837,"month_start":"2019-06-01","tx_count":98},{"avg_dom":27.5,"month_start":"2019-07-01","tx_count":84},{"avg_dom":35.875,"month_start":"2019-08-01","tx_count":80},{"avg_dom":31.575342465753426,"month_start":"2019-09-01","tx_count":73},{"avg_dom":36.712765957446805,"month_start":"2019-10-01","tx_count":94},{"avg_dom":34.795698924731184,"month_start":"2019-11-01","tx_count":93},{"avg_dom":45.9054054054054,"month_start":"2019-12-01","tx_count":74},{"avg_dom":63.604166666666664,"month_start":"2020-01-01","tx_count":48},{"avg_dom":23.725806451612904,"month_start":"2020-02-01","tx_count":62},{"avg_dom":27.336734693877553,"month_start":"2020-03-01","tx_count":98},{"avg_dom":31.38095238095238,"month_start":"2020-04-01","tx_count":42},{"avg_dom":37.3421052631579,"month_start":"2020-05-01","tx_count":38},{"avg_dom":33.733333333333334,"month_start":"2020-06-01","tx_count":60},{"avg_dom":42.7752808988764,"month_start":"2020-07-01","tx_count":89},{"avg_dom":49.532467532467535,"month_start":"2020-08-01","tx_count":77},{"avg_dom":45.5377358490566,"month_start":"2020-09-01","tx_count":106},{"avg_dom":45.148148148148145,"month_start":"2020-10-01","tx_count":81},{"avg_dom":60.74,"month_start":"2020-11-01","tx_count":100},{"avg_dom":65.16788321167883,"month_start":"2020-12-01","tx_count":137},{"avg_dom":68.55319148936171,"month_start":"2021-01-01","tx_count":94},{"avg_dom":64.08333333333333,"month_start":"2021-02-01","tx_count":84},{"avg_dom":50.93452380952381,"month_start":"2021-03-01","tx_count":168},{"avg_dom":56.55696202531646,"month_start":"2021-04-01","tx_count":158},{"avg_dom":43.30434782608695,"month_start":"2021-05-01","tx_count":138},{"avg_dom":41.0887573964497,"month_start":"2021-06-01","tx_count":169},{"avg_dom":54.60655737704918,"month_start":"2021-07-01","tx_count":122},{"avg_dom":46.11904761904762,"month_start":"2021-08-01","tx_count":126},{"avg_dom":39.40816326530612,"month_start":"2021-09-01","tx_count":98},{"avg_dom":41.526785714285715,"month_start":"2021-10-01","tx_count":112},{"avg_dom":41.76470588235294,"month_start":"2021-11-01","tx_count":119},{"avg_dom":45.89423076923077,"month_start":"2021-12-01","tx_count":104},{"avg_dom":75.43103448275862,"month_start":"2022-01-01","tx_count":58},{"avg_dom":43.46511627906977,"month_start":"2022-02-01","tx_count":86},{"avg_dom":43.196969696969695,"month_start":"2022-03-01","tx_count":132},{"avg_dom":36.9051724137931,"month_start":"2022-04-01","tx_count":116},{"avg_dom":42.81578947368421,"month_start":"2022-05-01","tx_count":114},{"avg_dom":40.808510638297875,"month_start":"2022-06-01","tx_count":94},{"avg_dom":62.7875,"month_start":"2022-07-01","tx_count":80},{"avg_dom":52.30555555555556,"month_start":"2022-08-01","tx_count":72},{"avg_dom":63.351351351351354,"month_start":"2022-09-01","tx_count":74},{"avg_dom":44.39705882352941,"month_start":"2022-10-01","tx_count":68},{"avg_dom":62.25925925925926,"month_start":"2022-11-01","tx_count":54},{"avg_dom":86.95652173913044,"month_start":"2022-12-01","tx_count":46},{"avg_dom":90.29411764705883,"month_start":"2023-01-01","tx_count":34},{"avg_dom":68.46511627906976,"month_start":"2023-02-01","tx_count":43},{"avg_dom":72.57333333333334,"month_start":"2023-03-01","tx_count":75},{"avg_dom":58.38805970149254,"month_start":"2023-04-01","tx_count":67},{"avg_dom":81.46875,"month_start":"2023-05-01","tx_count":64},{"avg_dom":51,"month_start":"2023-06-01","tx_count":62},{"avg_dom":51.48888888888889,"month_start":"2023-07-01","tx_count":45},{"avg_dom":67.03571428571429,"month_start":"2023-08-01","tx_count":56},{"avg_dom":57.66129032258065,"month_start":"2023-09-01","tx_count":62},{"avg_dom":50.90196078431372,"month_start":"2023-10-01","tx_count":51},{"avg_dom":71.04651162790698,"month_start":"2023-11-01","tx_count":43},{"avg_dom":88.74137931034483,"month_start":"2023-12-01","tx_count":58},{"avg_dom":76.9090909090909,"month_start":"2024-01-01","tx_count":33},{"avg_dom":53.77049180327869,"month_start":"2024-02-01","tx_count":61},{"avg_dom":53.89705882352941,"month_start":"2024-03-01","tx_count":68},{"avg_dom":62.5,"month_start":"2024-04-01","tx_count":82},{"avg_dom":46.18571428571428,"month_start":"2024-05-01","tx_count":70},{"avg_dom":52.11764705882353,"month_start":"2024-06-01","tx_count":51},{"avg_dom":55.27142857142857,"month_start":"2024-07-01","tx_count":70},{"avg_dom":67.25757575757575,"month_start":"2024-08-01","tx_count":66},{"avg_dom":62.45454545454545,"month_start":"2024-09-01","tx_count":44},{"avg_dom":47.14754098360656,"month_start":"2024-10-01","tx_count":61},{"avg_dom":70.58904109589041,"month_start":"2024-11-01","tx_count":73},{"avg_dom":77.02,"month_start":"2024-12-01","tx_count":50},{"avg_dom":100.93478260869566,"month_start":"2025-01-01","tx_count":46},{"avg_dom":65.92753623188406,"month_start":"2025-02-01","tx_count":69},{"avg_dom":51.2,"month_start":"2025-03-01","tx_count":85},{"avg_dom":51.128571428571426,"month_start":"2025-04-01","tx_count":70},{"avg_dom":56.18072289156626,"month_start":"2025-05-01","tx_count":83},{"avg_dom":82.19354838709677,"month_start":"2025-06-01","tx_count":62},{"avg_dom":66.43661971830986,"month_start":"2025-07-01","tx_count":71},{"avg_dom":87.73076923076923,"month_start":"2025-08-01","tx_count":78},{"avg_dom":50.2962962962963,"month_start":"2025-09-01","tx_count":81},{"avg_dom":61.21686746987952,"month_start":"2025-10-01","tx_count":83},{"avg_dom":65.65517241379311,"month_start":"2025-11-01","tx_count":58},{"avg_dom":74.16923076923077,"month_start":"2025-12-01","tx_count":65},{"avg_dom":120.45945945945945,"month_start":"2026-01-01","tx_count":37},{"avg_dom":52.04081632653061,"month_start":"2026-02-01","tx_count":49},{"avg_dom":35.39506172839506,"month_start":"2026-03-01","tx_count":81},{"avg_dom":40.75342465753425,"month_start":"2026-04-01","tx_count":73},{"avg_dom":45.31506849315068,"month_start":"2026-05-01","tx_count":73}]}};window.cowork=window.cowork||{};window.cowork.callMcpTool=function(t,p){try{var q=p&&p.params&&p.params.query;if(q&&Object.prototype.hasOwnProperty.call(FROZEN,q))return Promise.resolve(FROZEN[q]);}catch(e){}return Promise.reject(new Error("Frozen snapshot: no captured data for this query."));};})();</script><style>.brandbar .meta .live::before{animation:none !important;opacity:1}</style><script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<script>
+(() => {
+  const PP = { red: '#EE2127', black: '#000000', white: '#FFFFFF', muted: '#6B6B6B', grid: '#E5E5E5' };
+  if (window.Chart) {
+    Chart.defaults.font.family = "'Helvetica Neue', Helvetica, Arial, sans-serif";
+    Chart.defaults.color = '#111';
+    Chart.defaults.borderColor = PP.grid;
+  }
+
+  const MARKET = 'SF';
+  const DISTRICT = 'SF District 9';
+  const TYPE_FILTER = "PropertyType IN ('CNDO','TWNH','COOP')";
+  const DISTRICT_FILTER = "FK_Geo_District_Name = '" + DISTRICT + "'";
+
+  const CUR_WEEK_START = "DATEADD(week, DATEDIFF(week, 0, GETDATE()), 0)";
+  const CUR_MONTH_START = "DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)";
+  const PREV_MONTH = "DATEADD(month, -1, GETDATE())";
+
+  const Q = {
+    contracts: `
+      SELECT DATEADD(week, DATEDIFF(week, 0, COALESCE(ContingentDate, PendingDate)), 0) AS week_start,
+             COUNT(DISTINCT ListingMLS_ID) AS contract_count
+      FROM   Tbl_Listings_MLS
+      WHERE  MLS_Source = '${MARKET}'
+        AND  ${DISTRICT_FILTER}
+        AND  ${TYPE_FILTER}
+        AND  COALESCE(ContingentDate, PendingDate) IS NOT NULL
+        AND  COALESCE(ContingentDate, PendingDate) >= '2020-01-01'
+        AND  DATEADD(week, DATEDIFF(week, 0, COALESCE(ContingentDate, PendingDate)), 0) < ${CUR_WEEK_START}
+      GROUP  BY DATEADD(week, DATEDIFF(week, 0, COALESCE(ContingentDate, PendingDate)), 0)
+      ORDER  BY week_start`,
+
+    weeklyVolume: `
+      SELECT DATEADD(week, DATEDIFF(week, 0, SaleDate), 0) AS week_start,
+             SUM(CAST(SalePrice AS BIGINT)) AS total_volume,
+             COUNT(DISTINCT ListingMLS_ID) AS tx_count
+      FROM   Tbl_Listings_MLS
+      WHERE  MLS_Source = '${MARKET}'
+        AND  ${DISTRICT_FILTER}
+        AND  ${TYPE_FILTER}
+        AND  SaleDate IS NOT NULL
+        AND  SalePrice > 0
+        AND  SalePrice < 50000000
+        AND  SaleDate >= '2020-01-01'
+        AND  DATEADD(week, DATEDIFF(week, 0, SaleDate), 0) < ${CUR_WEEK_START}
+      GROUP  BY DATEADD(week, DATEDIFF(week, 0, SaleDate), 0)
+      ORDER  BY week_start`,
+
+    monthlyVolume: `
+      SELECT DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) AS month_start,
+             SUM(CAST(SalePrice AS BIGINT)) AS total_volume,
+             COUNT(DISTINCT ListingMLS_ID) AS tx_count
+      FROM   Tbl_Listings_MLS
+      WHERE  MLS_Source = '${MARKET}'
+        AND  ${DISTRICT_FILTER}
+        AND  ${TYPE_FILTER}
+        AND  SaleDate IS NOT NULL
+        AND  SalePrice > 0
+        AND  SalePrice < 50000000
+        AND  SaleDate >= '2007-01-01'
+        AND  DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) < ${CUR_MONTH_START}
+      GROUP  BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)
+      ORDER  BY month_start`,
+
+    median: `
+      WITH ranked AS (
+        SELECT DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) AS month_start,
+               CAST(SalePrice AS FLOAT) AS price,
+               ROW_NUMBER() OVER (
+                 PARTITION BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)
+                 ORDER BY CAST(SalePrice AS FLOAT)
+               ) AS rn,
+               COUNT(*) OVER (
+                 PARTITION BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)
+               ) AS cnt
+        FROM   Tbl_Listings_MLS
+        WHERE  MLS_Source = '${MARKET}'
+          AND  ${DISTRICT_FILTER}
+          AND  ${TYPE_FILTER}
+          AND  SaleDate IS NOT NULL
+          AND  SalePrice > 0
+          AND  SalePrice < 50000000
+          AND  SaleDate >= DATEADD(year, -10, ${CUR_MONTH_START})
+          AND  DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) < ${CUR_MONTH_START}
+      )
+      SELECT month_start,
+             AVG(price) AS median_price,
+             MAX(cnt)   AS tx_count
+      FROM   ranked
+      WHERE  rn IN ((cnt + 1) / 2, (cnt + 2) / 2)
+      GROUP  BY month_start
+      ORDER  BY month_start`,
+
+    spread: `
+      SELECT DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) AS month_start,
+             AVG((CAST(SalePrice AS FLOAT) - CAST(ListPrice AS FLOAT))
+                  / NULLIF(CAST(ListPrice AS FLOAT), 0)) * 100 AS spread_pct,
+             COUNT(*) AS tx_count
+      FROM   Tbl_Listings_MLS
+      WHERE  MLS_Source = '${MARKET}'
+        AND  ${DISTRICT_FILTER}
+        AND  ${TYPE_FILTER}
+        AND  SaleDate IS NOT NULL
+        AND  SalePrice > 0
+        AND  SalePrice < 50000000
+        AND  ListPrice >= 50000
+        AND  ABS((CAST(SalePrice AS FLOAT) - CAST(ListPrice AS FLOAT))
+                 / CAST(ListPrice AS FLOAT)) <= 0.30
+        AND  SaleDate >= DATEADD(year, -10, ${CUR_MONTH_START})
+        AND  DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) < ${CUR_MONTH_START}
+      GROUP  BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)
+      ORDER  BY month_start`,
+
+    buckets: `
+      SELECT (CAST(FLOOR(SalePrice / 100000.0) AS INT) * 100000) AS bucket_start,
+             COUNT(*) AS sale_count
+      FROM   Tbl_Listings_MLS
+      WHERE  MLS_Source = '${MARKET}'
+        AND  ${DISTRICT_FILTER}
+        AND  ${TYPE_FILTER}
+        AND  SaleDate IS NOT NULL
+        AND  SalePrice > 0
+        AND  SalePrice < 50000000
+        AND  YEAR(SaleDate)  = YEAR(${PREV_MONTH})
+        AND  MONTH(SaleDate) = MONTH(${PREV_MONTH})
+      GROUP  BY (CAST(FLOOR(SalePrice / 100000.0) AS INT) * 100000)
+      ORDER  BY bucket_start`,
+
+    ppsf: `
+      WITH ranked AS (
+        SELECT DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) AS month_start,
+               CAST(SalePrice AS FLOAT) / NULLIF(CAST(LivingArea AS FLOAT), 0) AS ppsf,
+               ROW_NUMBER() OVER (
+                 PARTITION BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)
+                 ORDER BY CAST(SalePrice AS FLOAT) / NULLIF(CAST(LivingArea AS FLOAT), 0)
+               ) AS rn,
+               COUNT(*) OVER (
+                 PARTITION BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)
+               ) AS cnt
+        FROM   Tbl_Listings_MLS
+        WHERE  MLS_Source = '${MARKET}'
+          AND  ${DISTRICT_FILTER}
+          AND  ${TYPE_FILTER}
+          AND  SaleDate IS NOT NULL
+          AND  SalePrice > 0
+          AND  SalePrice < 50000000
+          AND  LivingArea > 0
+          AND  SaleDate >= DATEADD(year, -10, ${CUR_MONTH_START})
+          AND  DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) < ${CUR_MONTH_START}
+      )
+      SELECT month_start,
+             AVG(ppsf) AS median_ppsf,
+             MAX(cnt)  AS tx_count
+      FROM   ranked
+      WHERE  rn IN ((cnt + 1) / 2, (cnt + 2) / 2)
+      GROUP  BY month_start
+      ORDER  BY month_start`,
+
+    dom: `
+      SELECT DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) AS month_start,
+             AVG(CAST(DaysOnMarket AS FLOAT)) AS avg_dom,
+             COUNT(*) AS tx_count
+      FROM   Tbl_Listings_MLS
+      WHERE  MLS_Source = '${MARKET}'
+        AND  ${DISTRICT_FILTER}
+        AND  ${TYPE_FILTER}
+        AND  SaleDate IS NOT NULL
+        AND  DaysOnMarket IS NOT NULL
+        AND  DaysOnMarket >= 0
+        AND  DaysOnMarket < 1825
+        AND  SaleDate >= DATEADD(year, -10, ${CUR_MONTH_START})
+        AND  DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1) < ${CUR_MONTH_START}
+      GROUP  BY DATEFROMPARTS(YEAR(SaleDate), MONTH(SaleDate), 1)
+      ORDER  BY month_start`
+  };
+
+  const MCP_WRAPPER = 'mcp__a06e351d-2f71-4dcc-9620-4dca8171a250__execute_zapier_read_action';
+
+  async function callMcp(toolName, params) {
+    if (!window.cowork || typeof window.cowork.callMcpTool !== 'function') {
+      throw new Error('window.cowork.callMcpTool is not available — open this artifact inside Cowork.');
+    }
+    return window.cowork.callMcpTool(toolName, params);
+  }
+
+  function unwrap(raw) {
+    let body = raw;
+    if (typeof body === 'string') { try { body = JSON.parse(body); } catch (_) {} }
+    if (body && Array.isArray(body.content)) {
+      const t = body.content.find(c => c && c.type === 'text');
+      if (t && typeof t.text === 'string') { try { body = JSON.parse(t.text); } catch (_) {} }
+    }
+    if (body && body.results && Array.isArray(body.results)) return body.results;
+    if (Array.isArray(body)) return body;
+    return [];
+  }
+
+  async function runQuery(query) {
+    const raw = await callMcp(MCP_WRAPPER, {
+      app: 'SQL Server',
+      selected_api: 'MSSQLCLIAPI',
+      action: 'rows_custom_query',
+      instructions: 'Polaris Pacific market dashboard query',
+      output: 'all rows from the query',
+      params: { query }
+    });
+    return unwrap(raw);
+  }
+
+  function pick(row, ...names) {
+    for (const n of names) {
+      if (row[n] !== undefined && row[n] !== null) return row[n];
+      const lc = n.toLowerCase();
+      if (row[lc] !== undefined && row[lc] !== null) return row[lc];
+    }
+    const keys = Object.keys(row);
+    for (const n of names) {
+      const lc = n.toLowerCase();
+      const k = keys.find(k => k.toLowerCase() === lc);
+      if (k !== undefined && row[k] !== null) return row[k];
+    }
+    return undefined;
+  }
+
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  function num(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  function asDate(v) { return v ? new Date(v) : null; }
+  function fmtUsdShort(v) {
+    if (!Number.isFinite(v)) return '—';
+    if (Math.abs(v) >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
+    if (Math.abs(v) >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
+    if (Math.abs(v) >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
+    return '$' + v.toFixed(0);
+  }
+  function fmtUsdFull(v) { return Number.isFinite(v) ? '$' + Math.round(v).toLocaleString() : '—'; }
+  function fmtInt(v) { return Number.isFinite(+v) ? Math.round(+v).toLocaleString() : '—'; }
+  function fmtPct(v) { return (v >= 0 ? '+' : '') + v.toFixed(1) + '%'; }
+  function pctChange(a, b) { if (!b) return 0; return ((a - b) / b) * 100; }
+  function monthLabel(d) { return MONTH_NAMES[d.getMonth()].slice(0,3) + " '" + String(d.getFullYear()).slice(2); }
+
+  function trailingMA(arr, n) {
+    const out = []; let sum = 0; const q = [];
+    for (let i = 0; i < arr.length; i++) {
+      const v = num(arr[i]);
+      q.push(v); sum += v;
+      if (q.length > n) sum -= q.shift();
+      out.push(q.length === n ? sum / n : null);
+    }
+    return out;
+  }
+
+  function kpiRow(items) {
+    const wrap = document.createElement('div'); wrap.className = 'kpi-row';
+    items.forEach(it => {
+      const el = document.createElement('div'); el.className = 'kpi';
+      const lbl = document.createElement('div'); lbl.className = 'label'; lbl.textContent = it.label;
+      const val = document.createElement('div');
+      val.className = 'value' + (it.accent ? ' accent' : '');
+      val.textContent = it.value;
+      el.appendChild(lbl); el.appendChild(val);
+      if (it.delta !== undefined) {
+        const d = document.createElement('div');
+        d.className = 'delta ' + (it.deltaDir || '');
+        d.textContent = it.delta;
+        el.appendChild(d);
+      }
+      wrap.appendChild(el);
+    });
+    return wrap;
+  }
+
+  function rangeControls(initial, onChange, choices) {
+    const wrap = document.createElement('div'); wrap.className = 'controls';
+    (choices || ['1Y','3Y','5Y','ALL']).forEach(r => {
+      const b = document.createElement('button');
+      b.className = 'pill' + (r === initial ? ' active' : '');
+      b.textContent = r === 'ALL' ? 'All' : r;
+      b.dataset.range = r;
+      b.addEventListener('click', () => {
+        wrap.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+        b.classList.add('active'); onChange(r);
+      });
+      wrap.appendChild(b);
+    });
+    return wrap;
+  }
+
+  function rangeFilter(dates, range) {
+    if (!dates.length) return { start: 0, end: 0 };
+    const last = dates[dates.length - 1].getTime();
+    const yrs = range === '1Y' ? 1 : range === '3Y' ? 3 : range === '5Y' ? 5 : range === '10Y' ? 10 : 999;
+    const cutoff = last - yrs * 365.25 * 86400e3;
+    let start = 0;
+    while (start < dates.length && dates[start].getTime() < cutoff) start++;
+    return { start, end: dates.length };
+  }
+
+  function renderContracts(card, rows) {
+    const body = card.querySelector('[data-body]');
+    if (!rows.length) { body.innerHTML = '<div class="empty">No contract rows for this market.</div>'; return; }
+    const dates = rows.map(r => asDate(pick(r, 'week_start')));
+    const vals  = rows.map(r => num(pick(r, 'contract_count', 'listing_count')));
+    const ma4   = trailingMA(vals, 4);
+
+    const lastVal = vals[vals.length - 1];
+    const yoyIdx = Math.max(0, vals.length - 53);
+    const yoyDelta = pctChange(vals[vals.length - 1], vals[yoyIdx]);
+    const last12wAvg = vals.slice(-12).reduce((a,b)=>a+num(b),0) / Math.min(12, vals.length);
+
+    body.classList.remove('skeleton'); body.innerHTML = '';
+    body.appendChild(kpiRow([
+      { label: 'Last completed week', value: fmtInt(lastVal) },
+      { label: '12-week average', value: fmtInt(last12wAvg), accent: true },
+      { label: 'YoY', value: fmtPct(yoyDelta), deltaDir: yoyDelta >= 0 ? 'up' : 'down' }
+    ]));
+
+    const ctrlsHost = document.createElement('div'); body.appendChild(ctrlsHost);
+    const chartHost = document.createElement('div'); chartHost.className = 'chart-wrap';
+    const cv = document.createElement('canvas'); chartHost.appendChild(cv); body.appendChild(chartHost);
+
+    let viewIdx = [];
+    const chart = new Chart(cv, {
+      type: 'bar',
+      data: { labels: [], datasets: [
+        { type: 'bar', label: 'Weekly Sales', data: [],
+          backgroundColor: PP.red,
+          hoverBackgroundColor: PP.black,
+          categoryPercentage: 1.0, barPercentage: 0.95, order: 2 },
+        { type: 'line', label: '4-week moving avg', data: [],
+          borderColor: PP.black, backgroundColor: PP.black, borderWidth: 2,
+          pointRadius: 0, pointHoverRadius: 5, tension: 0.25, order: 1 }
+      ] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 400 },
+        events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
+        interaction: { mode: 'index', intersect: false, axis: 'x' },
+        hover: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 } } },
+          tooltip: {
+            enabled: true,
+            mode: 'index',
+            intersect: false,
+            position: 'nearest',
+            backgroundColor: 'rgba(17,17,17,0.95)',
+            titleColor: '#FFFFFF',
+            bodyColor: '#FFFFFF',
+            borderColor: PP.red,
+            borderWidth: 1,
+            padding: 10,
+            cornerRadius: 0,
+            displayColors: true,
+            callbacks: {
+              title: items => {
+                if (!items || !items[0]) return '';
+                const lbl = items[0].label || '';
+                const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(lbl);
+                if (!m) return lbl;
+                return 'Week of ' + MONTH_NAMES[parseInt(m[2], 10) - 1].slice(0, 3) +
+                       ' ' + parseInt(m[3], 10) + ', ' + m[1];
+              },
+              label: ctx => ctx.dataset.label + ': ' + fmtInt(ctx.parsed.y)
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { autoSkip: true, maxRotation: 0, callback: function(v) {
+                return shortDateTick(this.getLabelForValue(v));
+              } }, grid: { display: false }, border: { color: PP.black } },
+          y: { beginAtZero: true,
+               ticks: { callback: v => fmtInt(v) },
+               grid: { color: PP.grid }, border: { display: false } }
+        }
+      }
+    });
+
+    function applyRange(range) {
+      const { start, end } = rangeFilter(dates, range);
+      viewIdx = []; for (let i = start; i < end; i++) viewIdx.push(i);
+      chart.data.labels = dates.slice(start, end).map(d => d.toISOString().slice(0,10));
+      chart.data.datasets[0].data = vals.slice(start, end);
+      chart.data.datasets[1].data = ma4.slice(start, end);
+      chart.update('none');
+    }
+    ctrlsHost.appendChild(rangeControls('3Y', applyRange));
+    applyRange('3Y');
+  }
+
+  function renderWeeklyVolume(card, rows) {
+    const body = card.querySelector('[data-body]');
+    if (!rows.length) { body.innerHTML = '<div class="empty">No weekly volume rows for this market.</div>'; return; }
+    const dates = rows.map(r => asDate(pick(r, 'week_start')));
+    const vals  = rows.map(r => num(pick(r, 'total_volume')));
+    const counts = rows.map(r => num(pick(r, 'tx_count')));
+    const ma4 = trailingMA(vals, 4);
+
+    const lastVal = vals[vals.length - 1];
+    const last12wAvg = vals.slice(-12).reduce((a,b)=>a+num(b),0) / Math.min(12, vals.length);
+    const yoyIdx = Math.max(0, vals.length - 53);
+    const yoyDelta = pctChange(vals[vals.length - 1], vals[yoyIdx]);
+
+    body.classList.remove('skeleton'); body.innerHTML = '';
+    body.appendChild(kpiRow([
+      { label: 'Last completed week', value: fmtUsdShort(lastVal) },
+      { label: '12-week average', value: fmtUsdShort(last12wAvg), accent: true },
+      { label: 'YoY', value: fmtPct(yoyDelta), deltaDir: yoyDelta >= 0 ? 'up' : 'down' }
+    ]));
+
+    const ctrlsHost = document.createElement('div'); body.appendChild(ctrlsHost);
+    const chartHost = document.createElement('div'); chartHost.className = 'chart-wrap';
+    const cv = document.createElement('canvas'); chartHost.appendChild(cv); body.appendChild(chartHost);
+
+    let viewIdx = [];
+    const chart = new Chart(cv, {
+      type: 'bar',
+      data: { labels: [], datasets: [
+        { type: 'bar', label: 'Weekly $ volume', data: [],
+          backgroundColor: PP.red, categoryPercentage: 1.0, barPercentage: 0.95, order: 2 },
+        { type: 'line', label: '4-week moving avg', data: [],
+          borderColor: PP.black, backgroundColor: PP.black, borderWidth: 2,
+          pointRadius: 0, tension: 0.25, order: 1 }
+      ] },
+      options: timeBarOpts({
+        valFmt: fmtUsdShort, fullFmt: fmtUsdFull,
+        extraTooltip: (items) => {
+          const i = items[0].dataIndex;
+          const orig = viewIdx[i];
+          return orig != null && counts[orig] != null ? 'Transactions: ' + fmtInt(counts[orig]) : '';
+        }
+      })
+    });
+
+    function applyRange(range) {
+      const { start, end } = rangeFilter(dates, range);
+      viewIdx = []; for (let i = start; i < end; i++) viewIdx.push(i);
+      chart.data.labels = dates.slice(start, end).map(d => d.toISOString().slice(0,10));
+      chart.data.datasets[0].data = vals.slice(start, end);
+      chart.data.datasets[1].data = ma4.slice(start, end);
+      chart.update('none');
+    }
+    ctrlsHost.appendChild(rangeControls('3Y', applyRange));
+    applyRange('3Y');
+  }
+
+  function renderMonthlyVolume(card, rows) {
+    const body = card.querySelector('[data-body]');
+    if (!rows.length) { body.innerHTML = '<div class="empty">No monthly rows for this market.</div>'; return; }
+    const dates = rows.map(r => asDate(pick(r, 'month_start')));
+    const vols  = rows.map(r => num(pick(r, 'total_volume')));
+    const cnts  = rows.map(r => num(pick(r, 'tx_count')));
+
+    const lastIdx = vols.length - 1;
+    const ttmStart = Math.max(0, lastIdx - 11);
+    const ttmVol = vols.slice(ttmStart, lastIdx + 1).reduce((a,b)=>a+b, 0);
+    const prevTTMStart = Math.max(0, lastIdx - 23);
+    const prevTTMVol = vols.slice(prevTTMStart, ttmStart).reduce((a,b)=>a+b, 0);
+    const ttmYoY = pctChange(ttmVol, prevTTMVol);
+
+    body.classList.remove('skeleton'); body.innerHTML = '';
+    body.appendChild(kpiRow([
+      { label: 'Last completed month', value: fmtUsdShort(vols[lastIdx]) },
+      { label: 'Trailing 12 months', value: fmtUsdShort(ttmVol), accent: true },
+      { label: 'TTM vs prior 12mo', value: fmtPct(ttmYoY), deltaDir: ttmYoY >= 0 ? 'up' : 'down' }
+    ]));
+
+    const ctrlsHost = document.createElement('div'); body.appendChild(ctrlsHost);
+    const chartHost = document.createElement('div'); chartHost.className = 'chart-wrap';
+    const cv = document.createElement('canvas'); chartHost.appendChild(cv); body.appendChild(chartHost);
+
+    const chart = new Chart(cv, {
+      type: 'bar',
+      data: { labels: [], datasets: [
+        { type: 'bar', label: 'Monthly $ volume', data: [], yAxisID: 'y',
+          backgroundColor: PP.red, categoryPercentage: 1.0, barPercentage: 0.92, order: 2 },
+        { type: 'line', label: 'Transaction count', data: [], yAxisID: 'y2',
+          borderColor: PP.black, backgroundColor: PP.black, borderWidth: 2,
+          pointRadius: 0, tension: 0.25, order: 1 }
+      ] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 400 },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              title: items => items[0] ? items[0].label : '',
+              label: ctx => ctx.dataset.yAxisID === 'y'
+                ? 'Volume: ' + fmtUsdFull(ctx.parsed.y)
+                : 'Transactions: ' + fmtInt(ctx.parsed.y)
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { autoSkip: true, maxRotation: 0, callback: function(v) {
+                return shortDateTick(this.getLabelForValue(v));
+              } }, grid: { display: false }, border: { color: PP.black } },
+          y:  { position: 'left', beginAtZero: true,
+                ticks: { callback: v => fmtUsdShort(v) },
+                grid: { color: PP.grid }, border: { display: false } },
+          y2: { position: 'right', beginAtZero: true,
+                ticks: { callback: v => fmtInt(v) },
+                grid: { drawOnChartArea: false }, border: { display: false } }
+        }
+      }
+    });
+
+    function applyRange(range) {
+      const { start, end } = rangeFilter(dates, range);
+      chart.data.labels = dates.slice(start, end).map(d => d.toISOString().slice(0,7));
+      chart.data.datasets[0].data = vols.slice(start, end);
+      chart.data.datasets[1].data = cnts.slice(start, end);
+      chart.update('none');
+    }
+    ctrlsHost.appendChild(rangeControls('5Y', applyRange));
+    applyRange('5Y');
+  }
+
+  function renderMedian(card, rows) {
+    const body = card.querySelector('[data-body]');
+    if (!rows.length) { body.innerHTML = '<div class="empty">No median rows for this market.</div>'; return; }
+    const dates = rows.map(r => asDate(pick(r, 'month_start')));
+    const med   = rows.map(r => num(pick(r, 'median_price')));
+    const cnts  = rows.map(r => num(pick(r, 'tx_count')));
+
+    const lastIdx = med.length - 1;
+    const yoyIdx = Math.max(0, lastIdx - 12);
+    const yoyDelta = pctChange(med[lastIdx], med[yoyIdx]);
+    const allTimeHigh = Math.max(...med);
+
+    body.classList.remove('skeleton'); body.innerHTML = '';
+    body.appendChild(kpiRow([
+      { label: 'Last completed month', value: fmtUsdShort(med[lastIdx]) },
+      { label: '10-year peak', value: fmtUsdShort(allTimeHigh), accent: true },
+      { label: 'YoY', value: fmtPct(yoyDelta), deltaDir: yoyDelta >= 0 ? 'up' : 'down' }
+    ]));
+
+    const ctrlsHost = document.createElement('div'); body.appendChild(ctrlsHost);
+    const chartHost = document.createElement('div'); chartHost.className = 'chart-wrap';
+    const cv = document.createElement('canvas'); chartHost.appendChild(cv); body.appendChild(chartHost);
+
+    let viewIdx = [];
+    const chart = new Chart(cv, {
+      type: 'line',
+      data: { labels: [], datasets: [
+        { label: 'Median sale price', data: [],
+          borderColor: PP.red, backgroundColor: PP.red, borderWidth: 2,
+          pointRadius: 0, tension: 0.25, fill: false }
+      ] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 400 },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => items[0] ? items[0].label : '',
+              label: ctx => 'Median: ' + fmtUsdFull(ctx.parsed.y),
+              footer: items => {
+                const i = items[0].dataIndex; const orig = viewIdx[i];
+                return orig != null ? 'Transactions: ' + fmtInt(cnts[orig]) : '';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { autoSkip: true, maxRotation: 0, callback: function(v) {
+                return shortDateTick(this.getLabelForValue(v));
+              } }, grid: { display: false }, border: { color: PP.black } },
+          y: { beginAtZero: true,
+               ticks: { callback: v => fmtUsdShort(v) },
+               grid: { color: PP.grid }, border: { display: false } }
+        }
+      }
+    });
+
+    function applyRange(range) {
+      const { start, end } = rangeFilter(dates, range);
+      viewIdx = []; for (let i = start; i < end; i++) viewIdx.push(i);
+      chart.data.labels = dates.slice(start, end).map(d => monthLabel(d));
+      chart.data.datasets[0].data = med.slice(start, end);
+      chart.update('none');
+    }
+    ctrlsHost.appendChild(rangeControls('10Y', applyRange, ['1Y','3Y','5Y','10Y']));
+    applyRange('10Y');
+  }
+
+  function renderSpread(card, rows) {
+    const body = card.querySelector('[data-body]');
+    if (!rows.length) { body.innerHTML = '<div class="empty">No spread rows for this market.</div>'; return; }
+    const dates  = rows.map(r => asDate(pick(r, 'month_start')));
+    const spread = rows.map(r => num(pick(r, 'spread_pct')));
+    const cnts   = rows.map(r => num(pick(r, 'tx_count')));
+
+    const lastIdx = spread.length - 1;
+    const lastSpread = spread[lastIdx];
+    const trailing12 = spread.slice(Math.max(0, lastIdx - 11), lastIdx + 1);
+    const ttmAvg = trailing12.reduce((a,b)=>a+b,0) / trailing12.length;
+    const overListMonths = trailing12.filter(v => v > 0).length;
+
+    body.classList.remove('skeleton'); body.innerHTML = '';
+    body.appendChild(kpiRow([
+      { label: 'Last Completed Month', value: fmtPct(lastSpread),
+        deltaDir: lastSpread >= 0 ? 'up' : 'down' },
+      { label: 'Trailing 12mo Average', value: fmtPct(ttmAvg), accent: true },
+      { label: 'Months Over List (TTM)', value: overListMonths + ' / 12' }
+    ]));
+
+    const ctrlsHost = document.createElement('div'); body.appendChild(ctrlsHost);
+    const chartHost = document.createElement('div'); chartHost.className = 'chart-wrap';
+    const cv = document.createElement('canvas'); chartHost.appendChild(cv); body.appendChild(chartHost);
+
+    const zeroLine = {
+      id: 'ppZeroLine',
+      afterDatasetsDraw(chart) {
+        const yScale = chart.scales.y; if (!yScale) return;
+        const yZero = yScale.getPixelForValue(0);
+        const { left, right } = chart.chartArea;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.strokeStyle = PP.black; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(left, yZero); ctx.lineTo(right, yZero); ctx.stroke();
+        ctx.restore();
+      }
+    };
+
+    let viewIdx = [];
+    const chart = new Chart(cv, {
+      type: 'bar',
+      data: { labels: [], datasets: [
+        { label: 'Avg sale-to-list spread', data: [],
+          backgroundColor: [], borderWidth: 0,
+          categoryPercentage: 1.0, barPercentage: 0.95 }
+      ] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 400 },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => items[0] ? items[0].label : '',
+              label: ctx => 'Spread: ' + fmtPct(ctx.parsed.y),
+              footer: items => {
+                const i = items[0].dataIndex; const orig = viewIdx[i];
+                return orig != null ? 'Transactions: ' + fmtInt(cnts[orig]) : '';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { autoSkip: true, maxRotation: 0, callback: function(v) {
+                return shortDateTick(this.getLabelForValue(v));
+              } }, grid: { display: false }, border: { color: PP.black } },
+          y: { ticks: { callback: v => v.toFixed(0) + '%' },
+               grid: { color: PP.grid }, border: { display: false } }
+        }
+      },
+      plugins: [zeroLine]
+    });
+
+    function applyRange(range) {
+      const { start, end } = rangeFilter(dates, range);
+      viewIdx = []; for (let i = start; i < end; i++) viewIdx.push(i);
+      const slice = spread.slice(start, end);
+      chart.data.labels = dates.slice(start, end).map(d => monthLabel(d));
+      chart.data.datasets[0].data = slice;
+      chart.data.datasets[0].backgroundColor = slice.map(v => v >= 0 ? PP.black : PP.red);
+      const absMax = slice.length ? Math.max(...slice.map(v => Math.abs(v))) * 1.15 : 5;
+      chart.options.scales.y.min = -absMax;
+      chart.options.scales.y.max = absMax;
+      chart.update('none');
+    }
+    ctrlsHost.appendChild(rangeControls('10Y', applyRange, ['1Y','3Y','5Y','10Y']));
+    applyRange('10Y');
+  }
+
+  function renderPpsf(card, rows) {
+    const body = card.querySelector('[data-body]');
+    if (!rows.length) { body.innerHTML = '<div class="empty">No price-per-sqft rows for this market.</div>'; return; }
+    const dates = rows.map(r => asDate(pick(r, 'month_start')));
+    const ppsf  = rows.map(r => num(pick(r, 'median_ppsf')));
+    const cnts  = rows.map(r => num(pick(r, 'tx_count')));
+
+    const lastIdx = ppsf.length - 1;
+    const yoyIdx = Math.max(0, lastIdx - 12);
+    const yoyDelta = pctChange(ppsf[lastIdx], ppsf[yoyIdx]);
+    const allTimeHigh = Math.max(...ppsf);
+
+    body.classList.remove('skeleton'); body.innerHTML = '';
+    body.appendChild(kpiRow([
+      { label: 'Last completed month', value: '$' + Math.round(ppsf[lastIdx]).toLocaleString() + '/sf' },
+      { label: '10-year peak', value: '$' + Math.round(allTimeHigh).toLocaleString() + '/sf', accent: true },
+      { label: 'YoY', value: fmtPct(yoyDelta), deltaDir: yoyDelta >= 0 ? 'up' : 'down' }
+    ]));
+
+    const ctrlsHost = document.createElement('div'); body.appendChild(ctrlsHost);
+    const chartHost = document.createElement('div'); chartHost.className = 'chart-wrap';
+    const cv = document.createElement('canvas'); chartHost.appendChild(cv); body.appendChild(chartHost);
+
+    let viewIdx = [];
+    const chart = new Chart(cv, {
+      type: 'line',
+      data: { labels: [], datasets: [
+        { label: 'Median $/sqft', data: [],
+          borderColor: PP.red, backgroundColor: PP.red, borderWidth: 2,
+          pointRadius: 0, tension: 0.25, fill: false }
+      ] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 400 },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => items[0] ? items[0].label : '',
+              label: ctx => 'Median $/sqft: $' + Math.round(ctx.parsed.y).toLocaleString(),
+              footer: items => {
+                const i = items[0].dataIndex; const orig = viewIdx[i];
+                return orig != null ? 'Transactions: ' + fmtInt(cnts[orig]) : '';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { autoSkip: true, maxRotation: 0, callback: function(v) {
+                return shortDateTick(this.getLabelForValue(v));
+              } }, grid: { display: false }, border: { color: PP.black } },
+          y: { beginAtZero: true,
+               ticks: { callback: v => '$' + Math.round(v).toLocaleString() },
+               grid: { color: PP.grid }, border: { display: false } }
+        }
+      }
+    });
+
+    function applyRange(range) {
+      const { start, end } = rangeFilter(dates, range);
+      viewIdx = []; for (let i = start; i < end; i++) viewIdx.push(i);
+      chart.data.labels = dates.slice(start, end).map(d => monthLabel(d));
+      chart.data.datasets[0].data = ppsf.slice(start, end);
+      chart.update('none');
+    }
+    ctrlsHost.appendChild(rangeControls('10Y', applyRange, ['1Y','3Y','5Y','10Y']));
+    applyRange('10Y');
+  }
+
+  function renderDom(card, rows) {
+    const body = card.querySelector('[data-body]');
+    if (!rows.length) { body.innerHTML = '<div class="empty">No DOM rows for this market.</div>'; return; }
+    const dates = rows.map(r => asDate(pick(r, 'month_start')));
+    const dom   = rows.map(r => num(pick(r, 'avg_dom')));
+    const cnts  = rows.map(r => num(pick(r, 'tx_count')));
+
+    const lastIdx = dom.length - 1;
+    const yoyIdx = Math.max(0, lastIdx - 12);
+    const yoyDelta = pctChange(dom[lastIdx], dom[yoyIdx]);
+    const trailing12 = dom.slice(Math.max(0, lastIdx - 11), lastIdx + 1);
+    const ttmAvg = trailing12.reduce((a,b)=>a+b,0) / trailing12.length;
+
+    body.classList.remove('skeleton'); body.innerHTML = '';
+    body.appendChild(kpiRow([
+      { label: 'Last completed month', value: Math.round(dom[lastIdx]).toLocaleString() + ' days' },
+      { label: 'Trailing 12mo average', value: Math.round(ttmAvg).toLocaleString() + ' days', accent: true },
+      { label: 'YoY', value: fmtPct(yoyDelta), deltaDir: yoyDelta <= 0 ? 'up' : 'down' }
+    ]));
+
+    const ctrlsHost = document.createElement('div'); body.appendChild(ctrlsHost);
+    const chartHost = document.createElement('div'); chartHost.className = 'chart-wrap';
+    const cv = document.createElement('canvas'); chartHost.appendChild(cv); body.appendChild(chartHost);
+
+    let viewIdx = [];
+    const chart = new Chart(cv, {
+      type: 'line',
+      data: { labels: [], datasets: [
+        { label: 'Avg days on market', data: [],
+          borderColor: PP.red, backgroundColor: PP.red, borderWidth: 2,
+          pointRadius: 0, tension: 0.25, fill: false }
+      ] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 400 },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => items[0] ? items[0].label : '',
+              label: ctx => 'Avg DOM: ' + Math.round(ctx.parsed.y).toLocaleString() + ' days',
+              footer: items => {
+                const i = items[0].dataIndex; const orig = viewIdx[i];
+                return orig != null ? 'Transactions: ' + fmtInt(cnts[orig]) : '';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { autoSkip: true, maxRotation: 0, callback: function(v) {
+                return shortDateTick(this.getLabelForValue(v));
+              } }, grid: { display: false }, border: { color: PP.black } },
+          y: { beginAtZero: true,
+               ticks: { callback: v => Math.round(v).toLocaleString() },
+               grid: { color: PP.grid }, border: { display: false } }
+        }
+      }
+    });
+
+    function applyRange(range) {
+      const { start, end } = rangeFilter(dates, range);
+      viewIdx = []; for (let i = start; i < end; i++) viewIdx.push(i);
+      chart.data.labels = dates.slice(start, end).map(d => monthLabel(d));
+      chart.data.datasets[0].data = dom.slice(start, end);
+      chart.update('none');
+    }
+    ctrlsHost.appendChild(rangeControls('10Y', applyRange, ['1Y','3Y','5Y','10Y']));
+    applyRange('10Y');
+  }
+
+  function renderBuckets(card, rows) {
+    const body = card.querySelector('[data-body]');
+    if (!rows.length) { body.innerHTML = '<div class="empty">No closed sales in the previous month.</div>'; return; }
+
+    const today = new Date();
+    const prev = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const prevLabel = MONTH_NAMES[prev.getMonth()] + ' ' + prev.getFullYear();
+    card.querySelector('[data-title]').textContent = 'Closed Sales by $100K Price Bucket — ' + prevLabel;
+    const sub = card.querySelector('[data-subtitle]');
+    if (sub) sub.textContent = 'SF District 9 attached · ' + prevLabel;
+
+    const sparseStarts = rows.map(r => num(pick(r, 'bucket_start')));
+    const sparseCounts = rows.map(r => num(pick(r, 'sale_count')));
+    const sparse = new Map(sparseStarts.map((s, i) => [s, sparseCounts[i]]));
+    const minBucket = Math.min(...sparseStarts);
+    const maxBucket = Math.max(...sparseStarts);
+
+    const CAP = 5000000;
+    const lastBeforeCap = Math.min(maxBucket, CAP - 100000);
+    const buckets = [];
+    const counts = [];
+    for (let b = minBucket; b <= lastBeforeCap; b += 100000) {
+      buckets.push(b);
+      counts.push(sparse.get(b) || 0);
+    }
+    let plus5M = 0;
+    sparse.forEach((c, s) => { if (s >= CAP) plus5M += c; });
+    if (plus5M > 0) {
+      buckets.push(CAP);
+      counts.push(plus5M);
+    }
+
+    function bucketRangeLabel(b) {
+      return b >= CAP ? '$5M+' : fmtUsdShort(b) + ' – ' + fmtUsdShort(b + 100000);
+    }
+    function bucketShortLabel(b) {
+      return b >= CAP ? '$5M+' : fmtUsdShort(b);
+    }
+
+    const total = counts.reduce((a,b) => a + b, 0);
+    let cum = 0; let medianBucket = buckets[0];
+    for (let i = 0; i < buckets.length; i++) {
+      cum += counts[i];
+      if (cum >= total / 2) { medianBucket = buckets[i]; break; }
+    }
+    const meanApprox = total > 0
+      ? sparseStarts.reduce((s, b, i) => s + (b + 50000) * sparseCounts[i], 0) / total
+      : 0;
+    const modalIdx = counts.indexOf(Math.max(...counts));
+
+    body.classList.remove('skeleton'); body.innerHTML = '';
+    body.appendChild(kpiRow([
+      { label: 'Total closed sales', value: fmtInt(total) },
+      { label: 'Approx. median bucket', value: bucketShortLabel(medianBucket) + (medianBucket >= CAP ? '' : '+'), accent: true },
+      { label: 'Approx. mean', value: fmtUsdShort(meanApprox) }
+    ]));
+
+    const chartHost = document.createElement('div'); chartHost.className = 'chart-wrap';
+    chartHost.style.minHeight = '300px';
+    const cv = document.createElement('canvas'); chartHost.appendChild(cv); body.appendChild(chartHost);
+
+    const labels = buckets.map(b => bucketShortLabel(b));
+
+    const dataLabelsPlugin = {
+      id: 'ppBarLabels',
+      afterDatasetsDraw(chart) {
+        const meta = chart.getDatasetMeta(0); const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '600 10px ' + Chart.defaults.font.family;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillStyle = PP.black;
+        meta.data.forEach((bar, i) => {
+          if (counts[i] <= 0) return;
+          ctx.fillText(fmtInt(counts[i]), bar.x, bar.y - 3);
+        });
+        ctx.restore();
+      }
+    };
+
+    new Chart(cv, {
+      type: 'bar',
+      data: { labels, datasets: [
+        { label: 'Closed sales', data: counts,
+          backgroundColor: PP.red,
+          borderWidth: 0,
+          categoryPercentage: 0.95, barPercentage: 0.95 }
+      ] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 500 },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => bucketRangeLabel(buckets[items[0].dataIndex]),
+              label: ctx => 'Closed sales: ' + fmtInt(ctx.parsed.y)
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { autoSkip: true, maxRotation: 0 }, grid: { display: false }, border: { color: PP.black } },
+          y: { beginAtZero: true,
+               ticks: { callback: v => fmtInt(v), precision: 0 },
+               grid: { color: PP.grid }, border: { display: false } }
+        }
+      },
+      plugins: [dataLabelsPlugin]
+    });
+  }
+
+  function formatWeekLabel(lbl) {
+    if (!lbl) return '';
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(lbl);
+    if (!m) return lbl;
+    return 'Week of ' + MONTH_NAMES[parseInt(m[2], 10) - 1].slice(0, 3) +
+           ' ' + parseInt(m[3], 10) + ', ' + m[1];
+  }
+
+  function shortDateTick(lbl) {
+    if (!lbl) return '';
+    let m = /^(\d{4})-(\d{2})/.exec(lbl);
+    if (m) return m[2] + '-' + m[1].slice(2);
+    m = /^([A-Z][a-z]{2}) '(\d{2})$/.exec(lbl);
+    if (m) {
+      const monthIdx = MONTH_NAMES.findIndex(n => n.startsWith(m[1]));
+      if (monthIdx >= 0) return String(monthIdx + 1).padStart(2, '0') + '-' + m[2];
+    }
+    return lbl;
+  }
+
+  function timeBarOpts({ valFmt, fullFmt, extraTooltip }) {
+    return {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 400 },
+      interaction: { mode: 'index', intersect: false },
+      hover: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 } } },
+        tooltip: {
+          enabled: true,
+          mode: 'index',
+          intersect: false,
+          backgroundColor: 'rgba(0,0,0,0.92)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          padding: 10,
+          cornerRadius: 0,
+          displayColors: true,
+          callbacks: {
+            title: items => items[0] ? formatWeekLabel(items[0].label) : '',
+            label: ctx => ctx.dataset.label + ': ' + ((fullFmt || valFmt)(ctx.parsed.y)),
+            footer: extraTooltip ? extraTooltip : null
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { autoSkip: true, maxRotation: 0, callback: function(v) {
+              return shortDateTick(this.getLabelForValue(v));
+            } }, grid: { display: false }, border: { color: PP.black } },
+        y: { beginAtZero: true,
+             ticks: { callback: v => valFmt(v) },
+             grid: { color: PP.grid }, border: { display: false } }
+      }
+    };
+  }
+
+  function showError(card, err) {
+    const body = card.querySelector('[data-body]');
+    body.classList.remove('skeleton');
+    body.innerHTML = '<div class="error">Live query failed.<br>' + (err && err.message ? err.message : String(err)) + '</div>';
+  }
+
+  const cards = [
+    [document.getElementById('card-contracts'),      Q.contracts,     renderContracts],
+    [document.getElementById('card-weekly-volume'),  Q.weeklyVolume,  renderWeeklyVolume],
+    [document.getElementById('card-monthly-volume'), Q.monthlyVolume, renderMonthlyVolume],
+    [document.getElementById('card-median'),         Q.median,        renderMedian],
+    [document.getElementById('card-spread'),         Q.spread,        renderSpread],
+    [document.getElementById('card-buckets'),        Q.buckets,       renderBuckets],
+    [document.getElementById('card-ppsf'),           Q.ppsf,          renderPpsf],
+    [document.getElementById('card-dom'),            Q.dom,           renderDom]
+  ];
+
+  const t0 = performance.now();
+  Promise.allSettled(
+    cards.map(([card, query, render]) =>
+      runQuery(query).then(rows => render(card, rows))
+    )
+  ).then(results => {
+    const failures = results.filter(r => r.status === 'rejected');
+    results.forEach((r, i) => { if (r.status === 'rejected') showError(cards[i][0], r.reason); });
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+    const meta = document.getElementById('meta-updated');
+    const date = new Date().toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    meta.textContent = (failures.length ? failures.length + ' query failed · ' : '') + 'Loaded ' + date + ' · ' + elapsed + 's';
+  });
+})();
+</script>
+</body>
+</html>
